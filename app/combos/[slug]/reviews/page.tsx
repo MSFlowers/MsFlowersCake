@@ -1,15 +1,9 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { COMBO_PRODUCTS } from "../../../data/combos";
+import { fetchProductBySlug } from "../../../lib/db";
 import ProductAllReviewsClient from "../../../components/ProductAllReviewsClient";
 
 export const instant = false;
-
-export function generateStaticParams() {
-  return COMBO_PRODUCTS.map((p) => ({
-    slug: p.slug || p.id,
-  }));
-}
 
 async function ComboReviewsResolver({
   params,
@@ -17,9 +11,7 @@ async function ComboReviewsResolver({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = COMBO_PRODUCTS.find(
-    (p) => p.slug === slug || p.id === slug
-  );
+  const product = await fetchProductBySlug(slug);
 
   if (!product) {
     notFound();

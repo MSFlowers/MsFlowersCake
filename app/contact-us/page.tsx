@@ -1,9 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+
+const DEFAULT_STORE_SETTINGS = {
+  store_name: "MS Flowers & Cake",
+  tagline:
+    "Kolkata’s trusted boutique destination for fresh handpicked flower bouquets, artisanal celebration cakes, and romantic flower + cake combos.",
+  support_phone: "+91 6295233296",
+  support_email: "rohit62952332@gmail.com",
+  address: "MS Flowers & Cake — Florist & Bakery Hub, Chingrighata, Salt Lake, Kolkata, West Bengal - 700105",
+  operating_hours: "Open Daily: 8:00 AM – 11:30 PM",
+  midnight_hours: "Midnight Delivery Available (Till 12:30 AM)",
+  whatsapp_number: "+91 6295233296",
+  whatsapp_url: "https://wa.me/916295233296",
+  facebook_url: "https://www.facebook.com/profile.php?id=61596205570248",
+  instagram_url: "https://instagram.com/msflowers_kolkata",
+};
 
 const QUERY_CATEGORIES = [
   "Order Status / Tracking",
@@ -174,6 +189,7 @@ interface SubmittedInquiry {
 }
 
 export default function ContactUsPage() {
+  const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS);
   const [category, setCategory] = useState<string>(QUERY_CATEGORIES[0]);
   const [orderId, setOrderId] = useState("");
   const [name, setName] = useState("");
@@ -182,14 +198,37 @@ export default function ContactUsPage() {
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState<SubmittedInquiry | null>(null);
 
-  const whatsappDirectUrl =
-    "https://wa.me/916295233296?text=Hi%20MS%20Flowers%20%26%20Cake%2C%20I%20need%20help%20with%20an%20order";
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/store-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.settings) {
+          setSettings((prev) => ({
+            ...prev,
+            ...data.settings,
+          }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const cleanPhone = settings.support_phone.replace(/[^0-9+]/g, "") || "916295233296";
+  const telHref = `tel:${cleanPhone}`;
+  const whatsappCleanNumber = cleanPhone.replace(/[^0-9]/g, "") || "916295233296";
+
+  const whatsappDirectUrl = settings.whatsapp_url.includes("?")
+    ? settings.whatsapp_url
+    : `${settings.whatsapp_url}?text=${encodeURIComponent(`Hi ${settings.store_name}, I need help with an order`)}`;
 
   const dispatchLinks = useMemo(() => {
-    if (!submitted) return { whatsappUrl: whatsappDirectUrl, mailtoUrl: "mailto:rohit62952332@gmail.com" };
+    if (!submitted) return { whatsappUrl: whatsappDirectUrl, mailtoUrl: `mailto:${settings.support_email}` };
 
     const lines = [
-      `Hi MS Flowers & Cake Support Team,`,
+      `Hi ${settings.store_name} Support Team,`,
       ``,
       `*Category:* ${submitted.category}`,
       submitted.orderId ? `*Order ID:* ${submitted.orderId}` : null,
@@ -201,12 +240,12 @@ export default function ContactUsPage() {
       .filter((line): line is string => line !== null)
       .join("\n");
 
-    const whatsappUrl = `https://wa.me/916295233296?text=${encodeURIComponent(lines)}`;
-    const subject = `[MS Flowers Inquiry] ${submitted.category}${submitted.orderId ? ` - #${submitted.orderId}` : ""}`;
-    const mailtoUrl = `mailto:rohit62952332@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines)}`;
+    const whatsappUrl = `https://wa.me/${whatsappCleanNumber}?text=${encodeURIComponent(lines)}`;
+    const subject = `[${settings.store_name} Inquiry] ${submitted.category}${submitted.orderId ? ` - #${submitted.orderId}` : ""}`;
+    const mailtoUrl = `mailto:${settings.support_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines)}`;
 
     return { whatsappUrl, mailtoUrl };
-  }, [submitted]);
+  }, [submitted, settings.store_name, settings.support_email, whatsappCleanNumber, whatsappDirectUrl]);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -303,7 +342,7 @@ export default function ContactUsPage() {
                         <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                           <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z" />
                         </svg>
-                        <span>+91 6295233296</span>
+                        <span>{settings.whatsapp_number}</span>
                       </a>
                     </div>
                   </div>
@@ -324,7 +363,7 @@ export default function ContactUsPage() {
                       Kolkata Florist &amp; Bakery Hub
                     </h3>
                     <p className="text-sm text-zinc-700 font-medium mt-1 leading-relaxed">
-                      MS Flowers &amp; Cake — Florist &amp; Bakery Hub, Chingrighata, Salt Lake, Kolkata, West Bengal - 700105
+                      {settings.address}
                     </p>
                   </div>
                 </div>
@@ -336,7 +375,7 @@ export default function ContactUsPage() {
                     </svg>
                     <span>
                       <strong className="block text-zinc-900">Open Daily</strong>
-                      8:00 AM – 11:30 PM
+                      {settings.operating_hours}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-amber-900 bg-amber-50/80 border border-amber-200/70 rounded-xl px-3 py-2.5">
@@ -345,7 +384,7 @@ export default function ContactUsPage() {
                     </svg>
                     <span>
                       <strong className="block text-amber-950">Midnight Surprise Delivery</strong>
-                      Till 12:30 AM
+                      {settings.midnight_hours}
                     </span>
                   </div>
                 </div>
@@ -359,7 +398,7 @@ export default function ContactUsPage() {
 
                 <div className="space-y-3">
                   <a
-                    href="mailto:rohit62952332@gmail.com"
+                    href={`mailto:${settings.support_email}`}
                     className="flex items-center gap-3.5 p-3 rounded-2xl bg-zinc-50 hover:bg-rose-50/70 border border-zinc-100 hover:border-rose-200 transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 group-hover:border-rose-200 flex items-center justify-center text-[#c8102e] shrink-0">
@@ -372,13 +411,13 @@ export default function ContactUsPage() {
                         Email Support
                       </span>
                       <span className="block text-sm font-bold text-zinc-900 group-hover:text-[#c8102e] truncate">
-                        rohit62952332@gmail.com
+                        {settings.support_email}
                       </span>
                     </div>
                   </a>
 
                   <a
-                    href="tel:+916295233296"
+                    href={telHref}
                     className="flex items-center gap-3.5 p-3 rounded-2xl bg-zinc-50 hover:bg-rose-50/70 border border-zinc-100 hover:border-rose-200 transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 group-hover:border-rose-200 flex items-center justify-center text-[#c8102e] shrink-0">
@@ -391,7 +430,7 @@ export default function ContactUsPage() {
                         Call Store Desk
                       </span>
                       <span className="block text-sm font-bold text-zinc-900 group-hover:text-[#c8102e]">
-                        +91 6295233296
+                        {settings.support_phone}
                       </span>
                     </div>
                   </a>
@@ -406,7 +445,7 @@ export default function ContactUsPage() {
                   </span>
                   <div className="flex items-center gap-2.5">
                     <a
-                      href="https://www.facebook.com/profile.php?id=61596205570248"
+                      href={settings.facebook_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="Follow MS Flowers & Cake on Facebook"
@@ -432,7 +471,7 @@ export default function ContactUsPage() {
                     </a>
 
                     <a
-                      href="tel:+916295233296"
+                      href={telHref}
                       aria-label="Direct Call"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-zinc-200 hover:border-[#c8102e] hover:bg-[#c8102e] hover:text-white text-xs font-bold text-zinc-700 transition-all"
                     >

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { COMBO_CATEGORIES, COMBO_PRODUCTS } from "../data/combos";
+import { useGroupCatalog } from "../lib/useGroupCatalog";
 import ProductCard from "./ProductCard";
 
 export default function CombosSection() {
+  const { products: allProducts, categories, loading } = useGroupCatalog("Combos", "combos");
   const [activeTab, setActiveTab] = useState("all");
   const [isPaused, setIsPaused] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -15,8 +16,8 @@ export default function CombosSection() {
 
   const filteredProducts =
     activeTab === "all"
-      ? COMBO_PRODUCTS
-      : COMBO_PRODUCTS.filter((item) => item.category === activeTab);
+      ? allProducts
+      : allProducts.filter((item) => item.category === activeTab);
 
   // Check scroll boundary
   function updateScrollButtons() {
@@ -72,6 +73,8 @@ export default function CombosSection() {
 
     return () => clearInterval(timer);
   }, [isPaused, filteredProducts.length]);
+
+  if (!loading && allProducts.length === 0) return null;
 
   return (
     <section
@@ -165,7 +168,7 @@ export default function CombosSection() {
 
       {/* Category Pills Strip */}
       <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide text-xs font-semibold">
-        {COMBO_CATEGORIES.map((tab) => {
+        {categories.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button

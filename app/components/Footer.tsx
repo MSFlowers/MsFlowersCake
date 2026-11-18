@@ -2,7 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const DEFAULT_STORE_SETTINGS = {
+  store_name: "MS Flowers & Cake",
+  tagline:
+    "Kolkata’s trusted boutique destination for fresh handpicked flower bouquets, artisanal celebration cakes, and romantic flower + cake combos.",
+  support_phone: "+91 6295233296",
+  support_email: "rohit62952332@gmail.com",
+  address: "Chingrighata, Salt Lake, Kolkata, West Bengal - 700105",
+  operating_hours: "Open Daily: 8:00 AM – 11:30 PM",
+  midnight_hours: "Midnight Delivery Available (Till 12:30 AM)",
+  whatsapp_number: "+91 6295233296",
+  whatsapp_url: "https://wa.me/916295233296",
+  facebook_url: "https://www.facebook.com/profile.php?id=61596205570248",
+  instagram_url: "https://instagram.com/msflowers_kolkata",
+  copyright_text: "© 2026 MS: Online Flowers and Cake Delivery in Kolkata. All rights reserved.",
+  handcrafted_text: "Handcrafted with ❤️ in Chingrighata, Salt Lake, Kolkata",
+};
 
 const KOLKATA_DELIVERY_AREAS = [
   "Salt Lake Sector I–V",
@@ -46,10 +63,37 @@ const QUICK_LINKS = [
 
 export default function Footer() {
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [settings, setSettings] = useState(DEFAULT_STORE_SETTINGS);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/store-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.settings) {
+          setSettings((prev) => ({
+            ...prev,
+            ...data.settings,
+            whatsapp_url: data.settings.whatsapp_url || prev.whatsapp_url,
+            facebook_url: data.settings.facebook_url || prev.facebook_url,
+          }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleSection = (id: string) => {
     setOpenSection(openSection === id ? null : id);
   };
+
+  const cleanPhone = settings.support_phone.replace(/[^0-9+]/g, "") || "916295233296";
+  const telHref = `tel:${cleanPhone}`;
+  const waHref = settings.whatsapp_url.includes("?")
+    ? settings.whatsapp_url
+    : `${settings.whatsapp_url}?text=${encodeURIComponent("Hi MS Flowers & Cake, I want to order")}`;
 
   return (
     <footer className="bg-zinc-950 text-white pt-10 sm:pt-14 pb-8 border-t border-zinc-800">
@@ -100,7 +144,7 @@ export default function Footer() {
             </div>
             <div>
               <p className="text-xs font-bold text-white uppercase tracking-wider">WhatsApp Support</p>
-              <p className="text-[11px] text-zinc-400">+91 6295233296</p>
+              <p className="text-[11px] text-zinc-400">{settings.support_phone}</p>
             </div>
           </div>
         </div>
@@ -110,18 +154,21 @@ export default function Footer() {
           {/* Brand Info & Socials */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-zinc-700 shadow-md group-hover:border-rose-500 transition-colors shrink-0 bg-white">
+              <div
+                className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-zinc-700 shadow-md group-hover:border-rose-500 transition-colors shrink-0 bg-white"
+                style={{ position: "relative", width: "56px", height: "56px", borderRadius: "50%", overflow: "hidden" }}
+              >
                 <Image
                   src="/ms-logo.jpg"
                   alt="MS Online Flowers & Cake Delivery in Kolkata"
-                  fill
-                  sizes="60px"
-                  className="object-cover"
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-cover rounded-full"
                 />
               </div>
               <div>
                 <span className="block text-lg font-black tracking-tight text-white group-hover:text-rose-400 transition-colors">
-                  MS Flowers &amp; Cake
+                  {settings.store_name}
                 </span>
                 <span className="block text-[10px] font-bold tracking-widest uppercase text-rose-400">
                   ONLINE DELIVERY IN KOLKATA
@@ -130,12 +177,12 @@ export default function Footer() {
             </Link>
 
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Kolkata’s trusted boutique destination for fresh handpicked flower bouquets, artisanal celebration cakes, and romantic flower + cake combos.
+              {settings.tagline}
             </p>
 
             <div className="flex items-center gap-2.5 pt-1">
               <a
-                href="https://wa.me/916295233296?text=Hi%20MS%20Flowers%20%26%20Cake%2C%20I%20want%20to%20order"
+                href={waHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-full transition-all shadow-xs active:scale-95"
@@ -147,7 +194,7 @@ export default function Footer() {
               </a>
 
               <a
-                href="tel:+916295233296"
+                href={telHref}
                 className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-[#c8102e] hover:border-[#c8102e] flex items-center justify-center text-white transition-all shadow-xs"
                 aria-label="Call Store"
               >
@@ -157,7 +204,7 @@ export default function Footer() {
               </a>
 
               <a
-                href="https://www.facebook.com/profile.php?id=61596205570248"
+                href={settings.facebook_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-[#1877f2] hover:border-[#1877f2] flex items-center justify-center text-white transition-all shadow-xs"
@@ -167,6 +214,20 @@ export default function Footer() {
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
               </a>
+
+              {settings.instagram_url && (
+                <a
+                  href={settings.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-[#E1306C] hover:border-[#E1306C] flex items-center justify-center text-white transition-all shadow-xs"
+                  aria-label="Instagram Profile"
+                >
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </a>
+              )}
             </div>
 
             {/* Mobile Quick Links Pill Bar */}
@@ -360,7 +421,7 @@ export default function Footer() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                       </svg>
                     </span>
-                    <span>Chingrighata, Salt Lake, Kolkata, West Bengal</span>
+                    <span>{settings.address}</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded bg-zinc-900 border border-zinc-800 text-rose-400 flex items-center justify-center shrink-0">
@@ -368,8 +429,8 @@ export default function Footer() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                       </svg>
                     </span>
-                    <a href="tel:+916295233296" className="text-zinc-200 hover:text-white font-medium">
-                      +91 6295233296
+                    <a href={telHref} className="text-zinc-200 hover:text-white font-medium">
+                      {settings.support_phone}
                     </a>
                   </p>
                   <p className="flex items-center gap-2">
@@ -378,8 +439,8 @@ export default function Footer() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
                       </svg>
                     </span>
-                    <a href="mailto:rohit62952332@gmail.com" className="text-zinc-200 hover:text-white truncate">
-                      rohit62952332@gmail.com
+                    <a href={`mailto:${settings.support_email}`} className="text-zinc-200 hover:text-white truncate">
+                      {settings.support_email}
                     </a>
                   </p>
                   <p className="flex items-center gap-2 pt-0.5 text-zinc-300">
@@ -388,7 +449,7 @@ export default function Footer() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                       </svg>
                     </span>
-                    <span>Open Daily: 8:00 AM – 11:30 PM</span>
+                    <span>{settings.operating_hours}</span>
                   </p>
                   <p className="flex items-center gap-2 text-[11px] text-amber-300 pt-0.5">
                     <span className="w-5 h-5 rounded bg-amber-950/60 border border-amber-800/60 text-amber-300 flex items-center justify-center shrink-0">
@@ -396,7 +457,7 @@ export default function Footer() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
                       </svg>
                     </span>
-                    <span>Midnight Delivery Available (Till 12:30 AM)</span>
+                    <span>{settings.midnight_hours}</span>
                   </p>
                 </div>
               )}
@@ -409,18 +470,21 @@ export default function Footer() {
           {/* Col 1 & 2: Brand Story with Prominent Large Logo */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="flex items-center gap-3.5 group">
-              <div className="relative h-18 w-18 sm:h-20 sm:w-20 rounded-full overflow-hidden border-2 border-zinc-700 shadow-md group-hover:border-rose-500 transition-colors shrink-0 bg-white">
+              <div
+                className="relative h-18 w-18 sm:h-20 sm:w-20 rounded-full overflow-hidden border-2 border-zinc-700 shadow-md group-hover:border-rose-500 transition-colors shrink-0 bg-white"
+                style={{ position: "relative", width: "80px", height: "80px", borderRadius: "50%", overflow: "hidden" }}
+              >
                 <Image
                   src="/ms-logo.jpg"
                   alt="MS Online Flowers & Cake Delivery in Kolkata"
-                  fill
-                  sizes="80px"
-                  className="object-cover"
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover rounded-full"
                 />
               </div>
               <div>
                 <span className="block text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-rose-400 transition-colors">
-                  MS Flowers &amp; Cake
+                  {settings.store_name}
                 </span>
                 <span className="block text-[11px] font-bold tracking-widest uppercase text-rose-400">
                   ONLINE DELIVERY IN KOLKATA
@@ -429,15 +493,13 @@ export default function Footer() {
             </Link>
 
             <p className="text-sm text-zinc-400 leading-relaxed max-w-md">
-              Kolkata’s trusted boutique destination for fresh handpicked flower bouquets,
-              artisanal celebration cakes, and romantic flower + cake combos. Handcrafted daily
-              with love from our Chingrighata, Salt Lake florist &amp; bakery hub.
+              {settings.tagline}
             </p>
 
             {/* Social & WhatsApp Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <a
-                href="https://wa.me/916295233296?text=Hi%20MS%20Flowers%20%26%20Cake%2C%20I%20want%20to%20order"
+                href={waHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-full transition-all shadow-xs active:scale-95"
@@ -445,11 +507,11 @@ export default function Footer() {
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                   <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z" />
                 </svg>
-                <span>WhatsApp: +91 6295233296</span>
+                <span>WhatsApp: {settings.whatsapp_number}</span>
               </a>
 
               <a
-                href="https://www.facebook.com/profile.php?id=61596205570248"
+                href={settings.facebook_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-[#1877f2] hover:border-[#1877f2] flex items-center justify-center text-white transition-all shadow-xs"
@@ -460,8 +522,22 @@ export default function Footer() {
                 </svg>
               </a>
 
+              {settings.instagram_url && (
+                <a
+                  href={settings.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-[#E1306C] hover:border-[#E1306C] flex items-center justify-center text-white transition-all shadow-xs"
+                  aria-label="Instagram Profile"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </a>
+              )}
+
               <a
-                href="tel:+916295233296"
+                href={telHref}
                 className="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-[#c8102e] hover:border-[#c8102e] flex items-center justify-center text-white transition-all shadow-xs"
                 aria-label="Call Store"
               >
@@ -517,7 +593,7 @@ export default function Footer() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                   </svg>
                 </span>
-                <span>Chingrighata, Salt Lake, Kolkata, West Bengal</span>
+                <span>{settings.address}</span>
               </p>
 
               <p className="flex items-center gap-2.5">
@@ -526,8 +602,8 @@ export default function Footer() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                   </svg>
                 </span>
-                <a href="tel:+916295233296" className="hover:text-white transition-colors">
-                  +91 6295233296
+                <a href={telHref} className="hover:text-white transition-colors">
+                  {settings.support_phone}
                 </a>
               </p>
 
@@ -537,8 +613,8 @@ export default function Footer() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
                   </svg>
                 </span>
-                <a href="mailto:rohit62952332@gmail.com" className="hover:text-white transition-colors truncate">
-                  rohit62952332@gmail.com
+                <a href={`mailto:${settings.support_email}`} className="hover:text-white transition-colors truncate">
+                  {settings.support_email}
                 </a>
               </p>
 
@@ -548,7 +624,7 @@ export default function Footer() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                   </svg>
                 </span>
-                <span className="text-zinc-300">Open Daily: 8:00 AM – 11:30 PM</span>
+                <span className="text-zinc-300">{settings.operating_hours}</span>
               </p>
 
               <p className="flex items-center gap-2.5 text-[11px] text-amber-300 font-medium">
@@ -557,7 +633,7 @@ export default function Footer() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
                   </svg>
                 </span>
-                <span>Midnight Delivery Available (Till 12:30 AM)</span>
+                <span>{settings.midnight_hours}</span>
               </p>
 
               {/* Desktop Quick Links */}
@@ -611,7 +687,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-400 text-center sm:text-left">
           <p>
-            © 2026 MS: Online Flowers and Cake Delivery in Kolkata. All rights reserved.
+            {settings.copyright_text}
           </p>
           <nav aria-label="Footer Quick Links" className="flex items-center justify-center gap-3 text-xs">
             {QUICK_LINKS.map((link, idx) => (
@@ -624,9 +700,7 @@ export default function Footer() {
             ))}
           </nav>
           <p className="flex items-center justify-center gap-1">
-            <span>Handcrafted with</span>
-            <span className="text-rose-500">❤️</span>
-            <span>in Chingrighata, Salt Lake, Kolkata</span>
+            <span>{settings.handcrafted_text}</span>
           </p>
         </div>
       </div>

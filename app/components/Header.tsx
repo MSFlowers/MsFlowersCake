@@ -6,7 +6,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NAVIGATION_CATEGORIES } from "../data/navigation";
-import { Product } from "../data/flowers";
+import { formatCategoriesForNav } from "../lib/db";
+import { Product } from "../data/types";
+import {
+  CustomerUser,
+  getStoredCustomer,
+  logoutCustomer,
+} from "../lib/customerAuth";
 import {
   moveAllWishlistToCart,
   moveWishlistToCart,
@@ -91,16 +97,74 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Photography-First Click-to-Expand Category State (Default: all closed)
+  // Dynamic Live Navigation from Supabase
+  const [navCategories, setNavCategories] = useState(NAVIGATION_CATEGORIES);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadLiveNav() {
+      try {
+        const res = await fetch("/api/categories");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.categories && json.categories.length > 0 && isMounted) {
+            const formatted = formatCategoriesForNav(json.categories);
+            if (formatted.length > 0) {
+              setNavCategories(formatted);
+            }
+          }
+        }
+      } catch {
+        // keep fallback
+      }
+    }
+    loadLiveNav();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Photography-First Click-to-Expand Drawer State (Default: all closed, progressive click-only)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [mobileGroupIdx, setMobileGroupIdx] = useState<number | null>(null);
+  const [activeDrawerCatId, setActiveDrawerCatId] = useState<string | null>(null);
+  const [activeDrawerGroupIdx, setActiveDrawerGroupIdx] = useState<number | null>(null);
 
   function toggleCategory(categoryId: string) {
     setExpandedCategory((prev) => (prev === categoryId ? null : categoryId));
+    setMobileGroupIdx(null);
   }
 
+  function closeMenu() {
+    setMenuOpen(false);
+    setExpandedCategory(null);
+    setMobileGroupIdx(null);
+    setActiveDrawerCatId(null);
+    setActiveDrawerGroupIdx(null);
+  }
+
+  const activeDrawerCategory = activeDrawerCatId
+    ? navCategories.find((c) => c.id === activeDrawerCatId) || null
+    : null;
+  const activeDrawerGroup =
+    activeDrawerCategory &&
+    activeDrawerGroupIdx !== null &&
+    activeDrawerGroupIdx < activeDrawerCategory.groups.length
+      ? activeDrawerCategory.groups[activeDrawerGroupIdx]
+      : null;
+
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+  const [customer, setCustomer] = useState<CustomerUser | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
+    setCustomer(getStoredCustomer());
+    function onAuthChange() {
+      setCustomer(getStoredCustomer());
+    }
+    window.addEventListener("ms_customer_auth_change", onAuthChange);
+
     function handleClickOutside(event: MouseEvent) {
       if (
         searchContainerRef.current &&
@@ -108,13 +172,20 @@ export default function Header() {
       ) {
         setSearchOpen(false);
       }
+      if (
+        accountDropdownRef.current &&
+        !accountDropdownRef.current.contains(event.target as Node)
+      ) {
+        setAccountMenuOpen(false);
+      }
     }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setSearchOpen(false);
+        setAccountMenuOpen(false);
         setPincodeModalOpen(false);
-        setMenuOpen(false);
+        closeMenu();
         setCartOpen(false);
         setWishlistOpen(false);
       }
@@ -123,6 +194,7 @@ export default function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
     return () => {
+      window.removeEventListener("ms_customer_auth_change", onAuthChange);
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
@@ -186,6 +258,9 @@ export default function Header() {
               type="button"
               onClick={() => {
                 setExpandedCategory(null);
+                setMobileGroupIdx(null);
+                setActiveDrawerCatId(null);
+                setActiveDrawerGroupIdx(null);
                 setMenuOpen(true);
               }}
               aria-label="Open navigation menu"
@@ -208,13 +283,16 @@ export default function Header() {
             </button>
 
             <Link href="/" className="shrink-0 flex items-center">
-              <div className="relative h-[60px] w-[60px] sm:h-16 sm:w-16 2xl:h-[72px] 2xl:w-[72px] rounded-full overflow-hidden shrink-0">
+              <div
+                className="relative h-[60px] w-[60px] sm:h-16 sm:w-16 2xl:h-[72px] 2xl:w-[72px] rounded-full overflow-hidden shrink-0"
+                style={{ position: "relative", width: "60px", height: "60px", borderRadius: "50%", overflow: "hidden" }}
+              >
                 <Image
                   src="/ms-logo.jpg"
                   alt="MS Online Flowers & Cake"
-                  fill
-                  sizes="(min-width: 640px) 72px, 60px"
-                  className="object-cover"
+                  width={72}
+                  height={72}
+                  className="w-full h-full object-cover rounded-full"
                   priority
                 />
               </div>
@@ -421,71 +499,218 @@ export default function Header() {
               )}
             </button>
 
-            {/* 3. User Profile Circle Icon */}
-            <button
-              type="button"
-              aria-label="Account"
-              className="text-zinc-800 hover:text-[#c8102e] transition-colors cursor-pointer p-0.5"
-            >
-              <svg
-                className="w-5 h-5 sm:w-[22px] sm:h-[22px]"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.8}
-                stroke="currentColor"
-                aria-hidden="true"
+            {/* 3. User Profile Dropdown */}
+            <div className="relative" ref={accountDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((prev) => !prev)}
+                aria-label="Account Menu"
+                className="text-zinc-800 hover:text-[#c8102e] transition-colors cursor-pointer p-0.5 inline-flex items-center justify-center relative focus:outline-hidden"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                />
-              </svg>
-            </button>
+                {customer ? (
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-rose-600 to-pink-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                    {customer.name.charAt(0).toUpperCase()}
+                  </span>
+                ) : (
+                  <svg
+                    className="w-5 h-5 sm:w-[22px] sm:h-[22px]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.8}
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                    />
+                  </svg>
+                )}
+              </button>
+
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-zinc-200/90 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  {customer ? (
+                    <>
+                      {/* Customer Info Header */}
+                      <div className="px-4 py-3 bg-gradient-to-br from-rose-50 to-pink-50/40 border-b border-rose-100/80 mb-1">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-8 h-8 rounded-full bg-rose-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-xs">
+                            {customer.name.charAt(0).toUpperCase()}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-zinc-900 truncate">
+                              {customer.name}
+                            </p>
+                            <p className="text-[11px] text-zinc-500 truncate">
+                              {customer.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Links */}
+                      <Link
+                        href="/orders"
+                        onClick={() => setAccountMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                        </svg>
+                        <span>My Orders</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setWishlistOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
+                      >
+                        <svg className="w-4 h-4 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                        </svg>
+                        <span>My Wishlist</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setPincodeModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
+                      >
+                        <svg className="w-4 h-4 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span>Delivery Hub Zone</span>
+                      </button>
+
+                      <div className="my-1 border-t border-zinc-100" />
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await logoutCustomer();
+                          setAccountMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        <span>Sign Out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Guest Header */}
+                      <div className="px-4 py-3 border-b border-zinc-100">
+                        <p className="text-xs font-bold text-zinc-900">
+                          Welcome to MS Flowers
+                        </p>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">
+                          Login to view order history &amp; instant checkout
+                        </p>
+                        <Link
+                          href="/login"
+                          onClick={() => setAccountMenuOpen(false)}
+                          className="mt-2.5 w-full block text-center py-2 text-xs font-bold text-white bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 rounded-xl shadow-xs transition-all"
+                        >
+                          Sign In / Register
+                        </Link>
+                      </div>
+
+                      <Link
+                        href="/orders"
+                        onClick={() => setAccountMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                        </svg>
+                        <span>Track / My Orders</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setPincodeModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-zinc-800 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
+                      >
+                        <svg className="w-4 h-4 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span>Check Delivery Pincode</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Slide-Out Side Menu Drawer (High-Contrast Photography-First Category Drawer) */}
+      {/* Slide-Out Side Menu Drawer (Progressive Click-Only Multi-Column Flyout on Desktop + Accordion Sub-Menus on Mobile) */}
       {menuOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex animate-in fade-in duration-200"
-          onClick={() => setMenuOpen(false)}
+          onClick={closeMenu}
         >
           <aside
             role="dialog"
             aria-modal="true"
             aria-label="Categories navigation drawer"
-            className="w-full sm:w-[440px] 2xl:w-[480px] max-w-[94vw] bg-white h-full shadow-2xl flex flex-col justify-between overflow-hidden animate-in slide-in-from-left duration-250 z-50 border-r border-zinc-300"
+            className={`w-full sm:w-[440px] ${
+              !activeDrawerCategory
+                ? "md:w-[350px]"
+                : !activeDrawerGroup
+                ? "md:w-[640px]"
+                : "md:w-[900px]"
+            } max-w-[96vw] bg-white h-full shadow-2xl flex flex-col justify-between overflow-hidden animate-in slide-in-from-left duration-250 transition-[width] ease-out z-50 border-r border-zinc-300`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Header of Drawer (Refined & Balanced) */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 bg-white shrink-0">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-100 bg-white shrink-0">
               <div className="flex items-center gap-3.5">
-                <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0">
+                <div
+                  className="relative w-12 h-12 rounded-full overflow-hidden shrink-0"
+                  style={{ position: "relative", width: "48px", height: "48px", borderRadius: "50%", overflow: "hidden" }}
+                >
                   <Image
                     src="/ms-logo.jpg"
                     alt="MS Online Flowers & Cake"
-                    fill
-                    sizes="56px"
-                    className="object-cover"
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-cover rounded-full"
                     priority
                   />
                 </div>
                 <div>
-                  <div>
-                    <p className="text-base font-bold text-zinc-900 leading-tight">
-                      MS Flowers &amp; Cake
-                    </p>
-                  </div>
-                  <p className="text-xs 2xl:text-sm text-zinc-700 font-medium mt-0.5">
+                  <p className="text-base font-bold text-zinc-900 leading-tight">
+                    MS Flowers &amp; Cake
+                  </p>
+                  <p className="text-xs text-zinc-600 font-medium mt-0.5">
                     Chingrighata, Salt Lake, Kolkata
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setMenuOpen(false)}
+                onClick={closeMenu}
                 aria-label="Close navigation menu"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer text-base shrink-0"
               >
@@ -493,13 +718,186 @@ export default function Header() {
               </button>
             </div>
 
-            {/* Scrollable Content (No Ugly Scrollbars, Balanced Contrast) */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* DESKTOP VIEW: Progressive Click-Only Columns */}
+            <div className="hidden md:flex flex-1 min-h-0 divide-x divide-zinc-200/80 bg-white">
+              {/* Column 1: Express Shortcuts + 4 Main Categories (Always visible, default all closed) */}
+              <div className="w-[350px] shrink-0 flex flex-col overflow-y-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="px-3.5 pb-3 border-b border-zinc-100 grid grid-cols-2 gap-2">
+                  <Link
+                    href="/same-day"
+                    onClick={closeMenu}
+                    className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200/80 hover:border-[#c8102e] transition-all"
+                  >
+                    <p className="text-[11px] font-bold text-[#c8102e] leading-tight">
+                      ⚡ 90-Min Express
+                    </p>
+                    <p className="text-[10px] text-zinc-600 mt-0.5 leading-tight">
+                      Kolkata Hub
+                    </p>
+                  </Link>
+                  <Link
+                    href="/midnight"
+                    onClick={closeMenu}
+                    className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80 hover:border-purple-600 transition-all"
+                  >
+                    <p className="text-[11px] font-bold text-purple-800 leading-tight">
+                      🌙 12 AM Midnight
+                    </p>
+                    <p className="text-[10px] text-zinc-600 mt-0.5 leading-tight">
+                      Surprise Slot
+                    </p>
+                  </Link>
+                </div>
+
+                <p className="px-5 pt-3.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Shop By:
+                </p>
+
+                <div className="flex flex-col">
+                  {navCategories.map((category) => {
+                    const isActive = activeDrawerCategory?.id === category.id;
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => {
+                          if (activeDrawerCatId === category.id) {
+                            setActiveDrawerCatId(null);
+                            setActiveDrawerGroupIdx(null);
+                          } else {
+                            setActiveDrawerCatId(category.id);
+                            setActiveDrawerGroupIdx(null);
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between gap-2.5 px-4 py-3 text-left text-sm transition-colors cursor-pointer border-l-4 ${
+                          isActive
+                            ? "border-[#c8102e] bg-rose-50/45 text-[#c8102e] font-bold"
+                            : "border-transparent text-zinc-800 hover:bg-zinc-50 hover:text-[#c8102e] font-medium"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-zinc-200/80 shrink-0 bg-zinc-100">
+                            <Image
+                              src={category.imageSrc}
+                              alt={category.label}
+                              fill
+                              sizes="36px"
+                              className="object-cover"
+                            />
+                          </div>
+                          <span className="truncate">{category.label}</span>
+                        </div>
+                        <svg
+                          className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+                            isActive ? "rotate-90 text-[#c8102e]" : "text-zinc-400"
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2.2}
+                          stroke="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                          />
+                        </svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Column 2: Filter Buckets for Active Main Category (Opens only on 1st click) */}
+              {activeDrawerCategory && (
+                <div className="w-[290px] shrink-0 flex flex-col overflow-y-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="px-4 pb-3">
+                    <Link
+                      href={activeDrawerCategory.href}
+                      onClick={closeMenu}
+                      className="block w-full text-center rounded-full bg-zinc-100 hover:bg-rose-50 hover:text-[#c8102e] border border-zinc-200/80 hover:border-rose-200 px-4 py-2 text-xs font-bold text-zinc-800 transition-colors"
+                    >
+                      View All &apos;{activeDrawerCategory.label}&apos;
+                    </Link>
+                  </div>
+
+                  <div className="flex flex-col">
+                    {activeDrawerCategory.groups.map((group, idx) => {
+                      const isActiveGroup = activeDrawerGroupIdx === idx;
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() =>
+                            setActiveDrawerGroupIdx((prev) =>
+                              prev === idx ? null : idx
+                            )
+                          }
+                          className={`w-full flex items-center justify-between gap-2 px-5 py-3 text-left text-sm transition-colors cursor-pointer border-l-4 ${
+                            isActiveGroup
+                              ? "border-[#c8102e] bg-rose-50/35 text-[#c8102e] font-bold"
+                              : "border-transparent text-zinc-800 hover:bg-zinc-50 hover:text-[#c8102e] font-medium"
+                          }`}
+                        >
+                          <span className="truncate">{group.title}</span>
+                          <svg
+                            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+                              isActiveGroup ? "rotate-90 text-[#c8102e]" : "text-zinc-400"
+                            }`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2.2}
+                            stroke="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                            />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Column 3: Clickable Filter Items Inside Active Bucket (Opens only on 2nd click) */}
+              {activeDrawerGroup && (
+                <div className="flex-1 min-w-[260px] flex flex-col overflow-y-auto py-3 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                    {activeDrawerGroup.title}
+                  </p>
+                  <div className="flex flex-col">
+                    {activeDrawerGroup.items.map((item) => (
+                      <Link
+                        key={item.label}
+                        href={item.href}
+                        onClick={closeMenu}
+                        className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-800 hover:text-[#c8102e] hover:bg-rose-50/50 transition-colors"
+                      >
+                        <span className="leading-snug">{item.label}</span>
+                        {item.badge && (
+                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-[#c8102e] px-1.5 py-0.5 rounded-md">
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* MOBILE VIEW: Click-to-Expand Category Cards with Closed Sub-Menu Accordions */}
+            <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {/* Clean Kolkata Express Delivery Cards (Balanced Contrast) */}
               <div className="grid grid-cols-2 gap-2.5">
                 <Link
                   href="/same-day"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={closeMenu}
                   className="p-3 rounded-2xl bg-linear-to-br from-rose-50 via-rose-50/70 to-pink-50 border border-rose-200/80 hover:border-[#c8102e] hover:shadow-xs transition-all group"
                 >
                   <div className="flex items-center gap-1.5 text-xs font-bold text-[#c8102e]">
@@ -517,7 +915,7 @@ export default function Header() {
                 </Link>
                 <Link
                   href="/midnight"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={closeMenu}
                   className="p-3 rounded-2xl bg-linear-to-br from-purple-50 via-purple-50/70 to-indigo-50 border border-purple-200/80 hover:border-purple-600 hover:shadow-xs transition-all group"
                 >
                   <div className="flex items-center gap-1.5 text-xs font-bold text-purple-800">
@@ -536,7 +934,7 @@ export default function Header() {
 
               {/* Visual Photography-First Category Cards */}
               <div className="space-y-2.5 pt-1">
-                {NAVIGATION_CATEGORIES.map((category) => {
+                {navCategories.map((category) => {
                   const isExpanded = expandedCategory === category.id;
 
                   return (
@@ -568,7 +966,7 @@ export default function Header() {
                             <p className="text-sm font-bold text-zinc-800 group-hover:text-[#c8102e] leading-snug transition-colors">
                               {category.label}
                             </p>
-                            <p className="text-xs 2xl:text-sm text-zinc-700 font-medium mt-0.5">
+                            <p className="text-xs text-zinc-700 font-medium mt-0.5">
                               {category.subtitle}
                             </p>
                           </div>
@@ -593,13 +991,13 @@ export default function Header() {
                         </div>
                       </button>
 
-                      {/* 1-Tap Direct Chips (Zero Nested Folders, Refined Typography) */}
+                      {/* Expanded Sub-Menus (All closed until user clicks one) */}
                       {isExpanded && (
-                        <div className="px-3 pb-3.5 pt-1 space-y-3 border-t border-rose-100/70">
+                        <div className="px-3 pb-3.5 pt-2 space-y-2.5 border-t border-rose-100/70">
                           {/* Direct Quick Link */}
-                          <a
+                          <Link
                             href={category.href}
-                            onClick={() => setMenuOpen(false)}
+                            onClick={closeMenu}
                             className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-xs font-bold text-[#c8102e] transition-colors shadow-2xs"
                           >
                             <span>View All {category.label}</span>
@@ -617,36 +1015,68 @@ export default function Header() {
                                 d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
                               />
                             </svg>
-                          </a>
+                          </Link>
 
-                          {/* Direct Flat Groups */}
-                          {category.groups.map((group) => (
-                            <div key={group.id} className="space-y-1.5">
-                              <div className="flex items-center gap-1.5 px-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#c8102e]" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-zinc-700">
-                                  {group.title}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {group.items.map((item) => (
-                                  <a
-                                    key={item.label}
-                                    href={item.href}
-                                    onClick={() => setMenuOpen(false)}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs font-medium text-zinc-800 hover:text-[#c8102e] hover:border-rose-300 hover:bg-rose-50/50 transition-all shadow-2xs"
+                          <div className="space-y-1.5">
+                            {category.groups.map((grp, gIdx) => {
+                              const isGrpOpen = mobileGroupIdx === gIdx;
+                              return (
+                                <div
+                                  key={grp.id}
+                                  className="rounded-xl border border-zinc-200/90 bg-white overflow-hidden"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setMobileGroupIdx(isGrpOpen ? null : gIdx)
+                                    }
+                                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-bold cursor-pointer transition-colors ${
+                                      isGrpOpen
+                                        ? "bg-rose-50/70 text-[#c8102e]"
+                                        : "text-zinc-800 hover:bg-zinc-50"
+                                    }`}
                                   >
-                                    <span>{item.label}</span>
-                                    {item.badge && (
-                                      <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-[#c8102e] px-1.5 py-0.5 rounded-md">
-                                        {item.badge}
-                                      </span>
-                                    )}
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
+                                    <span>{grp.title}</span>
+                                    <svg
+                                      className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
+                                        isGrpOpen ? "rotate-90 text-[#c8102e]" : "text-zinc-400"
+                                      }`}
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      strokeWidth={2.2}
+                                      stroke="currentColor"
+                                      aria-hidden="true"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                                      />
+                                    </svg>
+                                  </button>
+                                  {isGrpOpen && (
+                                    <div className="px-2.5 pb-2.5 pt-1.5 flex flex-wrap gap-1.5 border-t border-rose-100/70 bg-rose-50/20">
+                                      {grp.items.map((item) => (
+                                        <Link
+                                          key={item.label}
+                                          href={item.href}
+                                          onClick={closeMenu}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs font-medium text-zinc-800 hover:text-[#c8102e] hover:border-rose-300 transition-all shadow-2xs"
+                                        >
+                                          <span>{item.label}</span>
+                                          {item.badge && (
+                                            <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-[#c8102e] px-1.5 py-0.5 rounded-md">
+                                              {item.badge}
+                                            </span>
+                                          )}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -656,23 +1086,39 @@ export default function Header() {
 
               {/* Local Trust Note */}
               <div className="py-2.5 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 text-center">
-                <p className="text-xs 2xl:text-sm font-semibold text-zinc-700">
+                <p className="text-xs font-semibold text-zinc-700">
                   🌸 Handcrafted Fresh Daily in Salt Lake • Guaranteed On-Time Dispatch
                 </p>
               </div>
             </div>
 
             {/* Bottom Support & Direct WhatsApp Order */}
-            <div className="p-4 border-t border-zinc-200/80 bg-zinc-50 shrink-0 space-y-2">
-              <div className="flex items-center justify-between text-xs 2xl:text-sm text-zinc-700 font-semibold">
-                <span className="font-semibold text-zinc-800">📍 Kolkata 90-Min Express Hub</span>
-                <span>Chingrighata, Salt Lake</span>
+            <div
+              className={`p-3.5 sm:p-4 border-t border-zinc-200/80 bg-zinc-50 shrink-0 flex flex-col gap-2.5 ${
+                activeDrawerCategory
+                  ? "md:flex-row md:items-center md:justify-between"
+                  : ""
+              }`}
+            >
+              <div
+                className={`flex text-xs text-zinc-700 font-semibold ${
+                  activeDrawerCategory
+                    ? "flex-col gap-0.5"
+                    : "items-center justify-between"
+                }`}
+              >
+                <span className="font-semibold text-zinc-800">
+                  📍 Kolkata 90-Min Express Hub
+                </span>
+                <span className="text-zinc-500">Chingrighata, Salt Lake</span>
               </div>
               <a
                 href={WHATSAPP_ORDER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center gap-2 bg-[#c8102e] hover:bg-[#a60c25] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer text-sm"
+                className={`inline-flex w-full ${
+                  activeDrawerCategory ? "md:w-auto md:px-5 shrink-0 whitespace-nowrap" : ""
+                } items-center justify-center gap-2 bg-[#c8102e] hover:bg-[#a60c25] text-white font-bold py-2.5 rounded-xl transition-all shadow-sm cursor-pointer text-xs sm:text-sm`}
               >
                 <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
                   <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z" />

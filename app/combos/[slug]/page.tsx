@@ -1,15 +1,9 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { COMBO_PRODUCTS } from "../../data/combos";
+import { fetchProductBySlug, fetchProducts } from "../../lib/db";
 import ComboDetailClient from "./ComboDetailClient";
 
 export const instant = false;
-
-export function generateStaticParams() {
-  return COMBO_PRODUCTS.map((p) => ({
-    slug: p.slug,
-  }));
-}
 
 async function ComboResolver({
   params,
@@ -17,15 +11,16 @@ async function ComboResolver({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = COMBO_PRODUCTS.find(
-    (p) => p.slug === slug || p.id === slug
-  );
+  const product = await fetchProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
-  return <ComboDetailClient product={product} />;
+  const all = await fetchProducts("Combos");
+  const related = all.filter((p) => p.id !== product.id).slice(0, 4);
+
+  return <ComboDetailClient product={product} related={related} />;
 }
 
 export default function ComboDetailPage({

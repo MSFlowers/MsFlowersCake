@@ -1,15 +1,9 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { FLOWER_PRODUCTS } from "../../../data/flowers";
+import { fetchProductBySlug } from "../../../lib/db";
 import ProductAllReviewsClient from "../../../components/ProductAllReviewsClient";
 
 export const instant = false;
-
-export function generateStaticParams() {
-  return FLOWER_PRODUCTS.map((p) => ({
-    slug: p.slug || p.id,
-  }));
-}
 
 async function FlowerReviewsResolver({
   params,
@@ -17,9 +11,7 @@ async function FlowerReviewsResolver({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = FLOWER_PRODUCTS.find(
-    (p) => p.slug === slug || p.id === slug
-  );
+  const product = await fetchProductBySlug(slug);
 
   if (!product) {
     notFound();

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { Product, ProductReview } from "../data/flowers";
+import { Product, ProductReview } from "../data/types";
 import { NewReviewInput, useProductReviews } from "../data/reviewsState";
+import { getStoredCustomer } from "../lib/customerAuth";
 
 const QUICK_LOCALITIES = [
   "Salt Lake",
@@ -145,12 +146,19 @@ export function WriteReviewModal({
   onClose: () => void;
   onSubmit: (input: NewReviewInput) => void;
 }) {
+  const customer = getStoredCustomer();
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [author, setAuthor] = useState("");
   const [city, setCity] = useState("Salt Lake");
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (customer?.name) {
+      setAuthor(customer.name);
+    }
+  }, [customer]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -177,14 +185,12 @@ export function WriteReviewModal({
     }
 
     onSubmit({
-      author,
-      city,
+      author: author.trim(),
+      city: city.trim(),
       rating,
-      comment,
+      comment: comment.trim(),
     });
 
-    setAuthor("");
-    setCity("Salt Lake");
     setComment("");
     setRating(5);
     setHoverRating(0);
@@ -194,7 +200,7 @@ export function WriteReviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="write-review-title"
@@ -238,153 +244,189 @@ export function WriteReviewModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="pt-5 space-y-5">
-          {/* Star Rating Picker */}
-          <div>
-            <label className="block text-xs font-bold text-zinc-800 mb-2">
-              Your Rating <span className="text-[#c8102e]">*</span>
-            </label>
-            <div className="flex items-center gap-3">
-              <div
-                className="flex items-center gap-1"
-                onMouseLeave={() => setHoverRating(0)}
+        {/* 1. If NOT Logged In: Compulsory Sign In Requirement */}
+        {!customer ? (
+          <div className="text-center py-7 px-3 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100 shadow-xs">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-base font-extrabold text-zinc-900">
+                Sign In Required to Review
+              </h4>
+              <p className="text-xs text-zinc-600 mt-1.5 max-w-sm mx-auto leading-relaxed">
+                To guarantee genuine feedback from verified buyers across Kolkata, submitting a customer review requires signing in to your MS Flowers account.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-zinc-600 hover:text-zinc-900 rounded-xl hover:bg-zinc-100 transition-colors"
               >
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onMouseEnter={() => setHoverRating(star)}
-                    onClick={() => setRating(star)}
-                    aria-label={`Rate ${star} stars`}
-                    className="p-1 cursor-pointer transition-transform hover:scale-110 focus:outline-none"
-                  >
-                    <svg
-                      className={`w-7 h-7 transition-colors ${
-                        star <= activeStars
-                          ? "fill-amber-400 text-amber-400"
-                          : "fill-zinc-200 text-zinc-200"
-                      }`}
-                      viewBox="0 0 20 20"
+                Cancel
+              </button>
+              <Link
+                href="/login"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs shadow-xs transition-all"
+              >
+                Sign In to Continue
+              </Link>
+            </div>
+          </div>
+        ) : (
+          /* 2. If Logged In: Form with Verified Buyer Badge & Moderation Notice */
+          <form onSubmit={handleSubmit} className="pt-5 space-y-4">
+            {/* Verified Buyer Badge */}
+            <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-xs shadow-2xs">
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                ✓
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-emerald-950 truncate">
+                  Verified Buyer: {customer.name}
+                </div>
+                <div className="text-[11px] text-emerald-700 truncate">
+                  Posting verified review as {customer.email}
+                </div>
+              </div>
+            </div>
+
+            {/* Star Rating Picker */}
+            <div>
+              <label className="block text-xs font-bold text-zinc-800 mb-1.5">
+                Your Rating <span className="text-[#c8102e]">*</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex items-center gap-1"
+                  onMouseLeave={() => setHoverRating(0)}
+                >
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(star)}
+                      onClick={() => setRating(star)}
+                      aria-label={`Rate ${star} stars`}
+                      className="p-1 cursor-pointer transition-transform hover:scale-110 focus:outline-none"
                     >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
+                      <svg
+                        className={`w-7 h-7 transition-colors ${
+                          star <= activeStars
+                            ? "fill-amber-400 text-amber-400"
+                            : "fill-zinc-200 text-zinc-200"
+                        }`}
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
+                  {RATING_LABELS[activeStars]}
+                </span>
+              </div>
+            </div>
+
+            {/* Kolkata Locality */}
+            <div>
+              <label
+                htmlFor="review-city"
+                className="block text-xs font-bold text-zinc-800 mb-1"
+              >
+                Kolkata Locality / Area
+              </label>
+              <input
+                id="review-city"
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g., Salt Lake, Ballygunge"
+                maxLength={50}
+                className="w-full px-3.5 py-2 rounded-xl border border-zinc-300 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 transition-colors"
+              />
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {QUICK_LOCALITIES.map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => setCity(loc)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors cursor-pointer ${
+                      city.trim().toLowerCase() === loc.toLowerCase()
+                        ? "bg-zinc-900 text-white border-zinc-900"
+                        : "bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                    }`}
+                  >
+                    {loc}
                   </button>
                 ))}
               </div>
-              <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
-                {RATING_LABELS[activeStars]}
-              </span>
             </div>
-          </div>
 
-          {/* Full Name */}
-          <div>
-            <label
-              htmlFor="review-author-name"
-              className="block text-xs font-bold text-zinc-800 mb-1.5"
-            >
-              Your Name <span className="text-[#c8102e]">*</span>
-            </label>
-            <input
-              id="review-author-name"
-              type="text"
-              value={author}
-              onChange={(e) => {
-                setAuthor(e.target.value);
-                if (error) setError("");
-              }}
-              placeholder="e.g., Priya Chatterjee"
-              maxLength={60}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 transition-colors"
-            />
-          </div>
-
-          {/* Kolkata Locality */}
-          <div>
-            <label
-              htmlFor="review-city"
-              className="block text-xs font-bold text-zinc-800 mb-1.5"
-            >
-              Kolkata Locality / Area
-            </label>
-            <input
-              id="review-city"
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g., Salt Lake, Ballygunge"
-              maxLength={50}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 transition-colors"
-            />
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {QUICK_LOCALITIES.map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => setCity(loc)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors cursor-pointer ${
-                    city.trim().toLowerCase() === loc.toLowerCase()
-                      ? "bg-zinc-900 text-white border-zinc-900"
-                      : "bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-zinc-400"
-                  }`}
+            {/* Review Textarea */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  htmlFor="review-comment"
+                  className="block text-xs font-bold text-zinc-800"
                 >
-                  {loc}
-                </button>
-              ))}
+                  Your Review <span className="text-[#c8102e]">*</span>
+                </label>
+                <span className="text-[11px] font-medium text-zinc-400">
+                  {comment.length}/400
+                </span>
+              </div>
+              <textarea
+                id="review-comment"
+                rows={3}
+                value={comment}
+                onChange={(e) => {
+                  setComment(e.target.value);
+                  if (error) setError("");
+                }}
+                maxLength={400}
+                placeholder="How was the freshness, presentation, and delivery experience?"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 transition-colors resize-none"
+              />
             </div>
-          </div>
 
-          {/* Review Textarea */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="review-comment"
-                className="block text-xs font-bold text-zinc-800"
+            {/* Moderation Disclaimer Notice */}
+            <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
+              <span className="text-amber-600 font-bold">⏳</span>
+              <p className="leading-relaxed">
+                <b>Approval Flow:</b> Your review will be submitted in <b>Pending</b> status. Our moderation team will verify it, after which it will appear publicly on this product page.
+              </p>
+            </div>
+
+            {error && (
+              <p className="text-xs font-bold text-[#c8102e] bg-rose-50 border border-rose-100 rounded-xl px-3.5 py-2">
+                {error}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-colors cursor-pointer"
               >
-                Your Review <span className="text-[#c8102e]">*</span>
-              </label>
-              <span className="text-[11px] font-medium text-zinc-400">
-                {comment.length}/400
-              </span>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              >
+                Submit for Approval
+              </button>
             </div>
-            <textarea
-              id="review-comment"
-              rows={3}
-              value={comment}
-              onChange={(e) => {
-                setComment(e.target.value);
-                if (error) setError("");
-              }}
-              maxLength={400}
-              placeholder="How was the freshness, presentation, and delivery experience?"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 transition-colors resize-none"
-            />
-          </div>
-
-          {error && (
-            <p className="text-xs font-bold text-[#c8102e] bg-rose-50 border border-rose-100 rounded-xl px-3.5 py-2">
-              {error}
-            </p>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-zinc-600 hover:bg-zinc-100 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-[#c8102e] text-white text-xs sm:text-sm font-bold transition-colors cursor-pointer shadow-xs"
-            >
-              Publish Review
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -403,17 +445,21 @@ export default function ProductReviewsSection({
   product,
   categoryPath,
 }: ProductReviewsSectionProps) {
-  const { reviews, totalCount, addReview } = useProductReviews(product);
+  const { reviews, totalCount, avgRating, addReview } = useProductReviews(product);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
 
   const latestReviews = reviews.slice(0, 2);
   const productSlug = product.slug || product.id;
 
-  function handlePublish(input: NewReviewInput) {
-    addReview(input);
-    setJustPublished(true);
-    setTimeout(() => setJustPublished(false), 5000);
+  async function handlePublish(input: NewReviewInput) {
+    try {
+      await addReview(input);
+      setJustPublished(true);
+      setTimeout(() => setJustPublished(false), 8000);
+    } catch (err: any) {
+      alert(err.message || "Failed to submit review");
+    }
   }
 
   return (
@@ -422,7 +468,7 @@ export default function ProductReviewsSection({
       <div className="pb-5 border-b border-zinc-200/80 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-3xl font-black text-zinc-950">
-            {product.rating.toFixed(1)}
+            {totalCount > 0 ? avgRating.toFixed(1) : product.rating.toFixed(1)}
             <svg
               className="w-6 h-6 fill-amber-400 text-amber-400"
               viewBox="0 0 20 20"
@@ -431,7 +477,7 @@ export default function ProductReviewsSection({
             </svg>
           </div>
           <p className="text-xs text-zinc-500 font-semibold mt-0.5">
-            Based on {totalCount} verified customer reviews in Kolkata
+            Based on {totalCount} verified approved reviews in Kolkata
           </p>
         </div>
 
@@ -459,15 +505,14 @@ export default function ProductReviewsSection({
 
       {/* Confirmation Banner */}
       {justPublished && (
-        <div className="px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs font-bold text-emerald-800 flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-              clipRule="evenodd"
-            />
-          </svg>
-          Thank you! Your review has been published.
+        <div className="px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-950 flex items-start gap-2.5 shadow-2xs">
+          <span className="text-amber-600 text-base leading-none">⏳</span>
+          <div>
+            <p className="font-extrabold text-amber-950">Review Submitted for Moderation!</p>
+            <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+              Thank you! Your verified review has been submitted for approval and will appear on this product once approved by our moderation team.
+            </p>
+          </div>
         </div>
       )}
 

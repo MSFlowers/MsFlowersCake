@@ -8,24 +8,49 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/ProductCard";
 import ProductReviewsSection from "../../components/ProductReviewsSection";
-import { FLOWER_PRODUCTS, Product } from "../../data/flowers";
+import { Product } from "../../data/types";
 import { useProductReviews } from "../../data/reviewsState";
 import { CartAddon, useShopState } from "../../data/shopState";
 
 interface FlowerDetailClientProps {
   product: Product;
+  related?: Product[];
 }
 
-export default function FlowerDetailClient({ product }: FlowerDetailClientProps) {
+export default function FlowerDetailClient({ product, related = [] }: FlowerDetailClientProps) {
+  const hasColorGalleries = Boolean(
+    product.colorGalleries &&
+    product.colorGalleries.length > 0 &&
+    product.colorGalleries.some((cg) => cg.images && cg.images.length > 0)
+  );
+  const [selectedColorId, setSelectedColorId] = useState<string>(
+    hasColorGalleries ? product.colorGalleries![0].id : ""
+  );
+
+  const activeColorGallery = hasColorGalleries
+    ? product.colorGalleries!.find((cg) => cg.id === selectedColorId)
+    : null;
+
   // Gallery images array
   const galleryImages =
-    product.images && product.images.length > 0
-      ? product.images
-      : [product.image];
+    activeColorGallery && activeColorGallery.images.length > 0
+      ? activeColorGallery.images
+      : (product.images && product.images.length > 0 ? product.images : [product.image]);
 
   const THUMBNAIL_LABELS = ["Full View", "Close-up", "Ribbon & Wrap", "Top Angle"];
 
   const [activeImage, setActiveImage] = useState(galleryImages[0]);
+
+  // Dynamic variants support from DB
+  const hasDbVariants = Boolean(product.variants && product.variants.length > 0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(
+    hasDbVariants ? product.variants![0].id : ""
+  );
+
+  const activeVariant = hasDbVariants
+    ? product.variants!.find((v) => v.id === selectedVariantId) || product.variants![0]
+    : null;
+
   const [pincode, setPincode] = useState("700001");
   const [pincodeChecked, setPincodeChecked] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<"standard" | "express" | "midnight">("standard");
@@ -72,10 +97,15 @@ export default function FlowerDetailClient({ product }: FlowerDetailClientProps)
   const slotFee =
     selectedSlot === "express" ? 99 : selectedSlot === "midnight" ? 149 : 0;
 
-  const finalPrice = product.price + addonTotal + slotFee;
+  const currentBasePrice = activeVariant ? activeVariant.price : product.price;
+  const currentOriginalPrice = activeVariant
+    ? (activeVariant.originalPrice || activeVariant.price)
+    : product.originalPrice;
+
+  const finalPrice = currentBasePrice + addonTotal + slotFee;
 
   const discountPercent = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100
+    ((currentOriginalPrice - currentBasePrice) / currentOriginalPrice) * 100
   );
 
   function toggleAddon(id: string) {
@@ -97,8 +127,9 @@ export default function FlowerDetailClient({ product }: FlowerDetailClientProps)
     return {
       product,
       quantity: 1,
-      unitBasePrice: product.price,
-      unitOriginalPrice: product.originalPrice,
+      unitBasePrice: currentBasePrice,
+      unitOriginalPrice: currentOriginalPrice,
+      weight: activeVariant ? activeVariant.name : product.weight,
       selectedSlot,
       cardMessage: addedAddons["card"] ? cardMessage : undefined,
       addons: selectedAddons,
@@ -118,7 +149,7 @@ export default function FlowerDetailClient({ product }: FlowerDetailClientProps)
   }
 
   // Related products
-  const relatedProducts = FLOWER_PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4);
+  const relatedProducts = related;
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-zinc-900 font-sans">
@@ -376,10 +407,10 @@ export default function FlowerDetailClient({ product }: FlowerDetailClientProps)
             <div className="p-3.5 sm:p-4 bg-rose-50/60 rounded-2xl border border-rose-100 flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-2">
               <div className="flex items-baseline gap-2.5 flex-wrap">
                 <span className="text-2xl sm:text-3xl font-black text-zinc-950">
-                  ₹{product.price}
+                  ₹{currentBasePrice}
                 </span>
                 <span className="text-sm text-zinc-400 line-through font-semibold">
-                  ₹{product.originalPrice}
+                  ₹{currentOriginalPrice}
                 </span>
                 <span className="text-xs font-black text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full whitespace-nowrap">
                   Save {discountPercent}%
@@ -389,6 +420,75 @@ export default function FlowerDetailClient({ product }: FlowerDetailClientProps)
                 Inclusive of all taxes &amp; packaging
               </span>
             </div>
+
+            {/* Color Shade Swatches (Dynamic from DB) */}
+            {hasColorGalleries && (
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-700 mb-2">
+                  Select Shade / Color:
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {product.colorGalleries!.map((cg) => {
+                    const isSel = cg.id === selectedColorId;
+                    return (
+                      <button
+                        key={cg.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedColorId(cg.id);
+                          if (cg.images && cg.images.length > 0) setActiveImage(cg.images[0]);
+                        }}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer ${
+                          isSel
+                            ? "border-[#c8102e] bg-rose-50 text-[#c8102e] shadow-xs"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300"
+                        }`}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
+                          style={{ backgroundColor: cg.colorCode }}
+                        />
+                        <span>{cg.colorName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Flower Variant Options Selector (Dynamic from DB) */}
+            {hasDbVariants && (
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-700 mb-2">
+                  Select Flower Arrangement / Stems:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {product.variants!.map((v) => {
+                    const isSel = v.id === activeVariant?.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVariantId(v.id)}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col justify-between text-left gap-1 cursor-pointer transition-all ${
+                          isSel
+                            ? "border-[#c8102e] bg-rose-50/70 text-[#c8102e] shadow-xs"
+                            : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
+                        }`}
+                      >
+                        <span>{v.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-zinc-950">₹{v.price}</span>
+                          {v.originalPrice && v.originalPrice > v.price && (
+                            <span className="text-[10px] text-zinc-400 line-through">₹{v.originalPrice}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* PINCODE & DELIVERY SLOT */}
             <div className="space-y-3 pt-1">

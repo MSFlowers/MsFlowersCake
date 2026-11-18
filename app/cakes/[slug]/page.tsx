@@ -1,15 +1,9 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { CAKE_PRODUCTS } from "../../data/cakes";
+import { fetchProductBySlug, fetchProducts } from "../../lib/db";
 import CakeDetailClient from "./CakeDetailClient";
 
 export const instant = false;
-
-export function generateStaticParams() {
-  return CAKE_PRODUCTS.map((p) => ({
-    slug: p.slug,
-  }));
-}
 
 async function CakeResolver({
   params,
@@ -17,15 +11,16 @@ async function CakeResolver({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = CAKE_PRODUCTS.find(
-    (p) => p.slug === slug || p.id === slug
-  );
+  const product = await fetchProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
-  return <CakeDetailClient product={product} />;
+  const all = await fetchProducts("Cakes");
+  const related = all.filter((p) => p.id !== product.id).slice(0, 4);
+
+  return <CakeDetailClient product={product} related={related} />;
 }
 
 export default function CakeDetailPage({

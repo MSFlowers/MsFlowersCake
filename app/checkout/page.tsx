@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+import { getCustomerSession } from "../lib/customerAuth";
 import {
   ConfirmedOrder,
   DeliverySlotType,
@@ -13,12 +14,32 @@ import {
 } from "../data/shopState";
 
 const QUICK_AREAS = [
-  { name: "Salt Lake", pincode: "700091" },
-  { name: "Chingrighata", pincode: "700105" },
-  { name: "New Town", pincode: "700156" },
-  { name: "Park Street", pincode: "700016" },
-  { name: "Ballygunge", pincode: "700019" },
-  { name: "Howrah", pincode: "711101" },
+  { name: "Chingrighata Hub", pincode: "700105" },
+  { name: "Salt Lake Sec V", pincode: "700091" },
+  { name: "Salt Lake Stadium", pincode: "700098" },
+  { name: "Salt Lake Sec III", pincode: "700106" },
+  { name: "Beliaghata", pincode: "700010" },
+  { name: "Tangra / Seal Lane", pincode: "700015" },
+  { name: "Phoolbagan", pincode: "700054" },
+  { name: "New Town Hub", pincode: "700156" },
+];
+
+const KOLKATA_HUB_PINCODES = [
+  "700105",
+  "700091",
+  "700098",
+  "700106",
+  "700068",
+  "700010",
+  "700015",
+  "700054",
+  "700067",
+  "700101",
+  "700052",
+  "700046",
+  "700042",
+  "700107",
+  "700156",
 ];
 
 const STANDARD_WINDOWS = [
@@ -37,59 +58,102 @@ const OCCASIONS = [
   "Best Wishes",
 ];
 
-const COUPONS = [
+export interface CheckoutCouponItem {
+  code: string;
+  label?: string;
+  description?: string;
+  discount_type?: "percentage" | "flat";
+  discount_value?: number;
+  minOrder?: number;
+  min_order?: number;
+  max_discount?: number | null;
+}
+
+const DEFAULT_COUPONS: CheckoutCouponItem[] = [
+  {
+    code: "WELCOME10",
+    label: "10% OFF (up to ₹500)",
+    discount_type: "percentage",
+    discount_value: 10,
+    min_order: 499,
+    max_discount: 500,
+  },
   {
     code: "KOLKATA10",
     label: "10% OFF (up to ₹250)",
-    minOrder: 0,
+    discount_type: "percentage",
+    discount_value: 10,
+    min_order: 0,
+    max_discount: 250,
   },
   {
     code: "FIRST100",
-    label: "Flat ₹100 OFF on ₹599+",
-    minOrder: 599,
+    label: "Flat ₹100 OFF on ₹799+",
+    discount_type: "flat",
+    discount_value: 100,
+    min_order: 799,
   },
   {
     code: "MSFLOWERS50",
-    label: "Flat ₹50 OFF",
-    minOrder: 0,
+    label: "Flat ₹50 OFF on ₹499+",
+    discount_type: "flat",
+    discount_value: 50,
+    min_order: 499,
+  },
+  {
+    code: "CAKE15",
+    label: "15% OFF (up to ₹300)",
+    discount_type: "percentage",
+    discount_value: 15,
+    min_order: 599,
+    max_discount: 300,
+  },
+  {
+    code: "FRESH15",
+    label: "15% OFF on Blooms",
+    discount_type: "percentage",
+    discount_value: 15,
+    min_order: 599,
+    max_discount: 300,
   },
 ];
 
-function computeCouponDiscount(
+function computeDynamicCouponDiscount(
   code: string | null,
-  subtotal: number
+  subtotal: number,
+  allCoupons: CheckoutCouponItem[]
 ): { discount: number; error: string | null } {
   if (!code) return { discount: 0, error: null };
   const normalized = code.trim().toUpperCase();
 
-  if (normalized === "KOLKATA10") {
+  const found = allCoupons.find((c) => c.code.toUpperCase() === normalized);
+  if (!found) {
     return {
-      discount: Math.min(250, Math.round(subtotal * 0.1), subtotal),
-      error: null,
+      discount: 0,
+      error: `Invalid coupon code. Try WELCOME10, KOLKATA10, FIRST100, or MSFLOWERS50.`,
     };
   }
-  if (normalized === "FIRST100") {
-    if (subtotal < 599) {
-      return {
-        discount: 0,
-        error: "FIRST100 is valid on orders of ₹599 or more.",
-      };
-    }
+
+  const minOrder = Number(found.min_order ?? found.minOrder) || 0;
+  if (subtotal < minOrder) {
     return {
-      discount: Math.min(100, subtotal),
-      error: null,
+      discount: 0,
+      error: `${found.code} is valid on orders of ₹${minOrder} or more.`,
     };
   }
-  if (normalized === "MSFLOWERS50") {
-    return {
-      discount: Math.min(50, subtotal),
-      error: null,
-    };
+
+  const isPercentage = found.discount_type === "percentage" || !found.discount_type;
+  const value = Number(found.discount_value) || 10;
+
+  if (isPercentage) {
+    const rawDisc = Math.round(subtotal * (value / 100));
+    const cap = found.max_discount ? Number(found.max_discount) : Infinity;
+    const finalDisc = Math.min(rawDisc, cap, subtotal);
+    return { discount: finalDisc, error: null };
+  } else {
+    const finalDisc = Math.min(value, subtotal);
+    return { discount: finalDisc, error: null };
   }
-  return {
-    discount: 0,
-    error: "Invalid coupon code. Try KOLKATA10, FIRST100, or MSFLOWERS50.",
-  };
 }
 
 function formatReadableDate(date: Date) {
@@ -143,6 +207,7 @@ export default function CheckoutPage() {
   const [deliveryNote, setDeliveryNote] = useState("");
 
   // Coupon State
+  const [checkoutCoupons, setCheckoutCoupons] = useState<CheckoutCouponItem[]>(DEFAULT_COUPONS);
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponFeedback, setCouponFeedback] = useState<{
@@ -150,10 +215,53 @@ export default function CheckoutPage() {
     text: string;
   } | null>(null);
 
+  const [serviceablePincodes, setServiceablePincodes] = useState<string[]>(KOLKATA_HUB_PINCODES);
+
+  useEffect(() => {
+    fetch("/api/coupons")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.coupons && Array.isArray(data.coupons) && data.coupons.length > 0) {
+          setCheckoutCoupons(data.coupons);
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/pincodes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.pincodes && Array.isArray(data.pincodes) && data.pincodes.length > 0) {
+          setServiceablePincodes(data.pincodes.map((p: any) => p.pincode));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Delivery Settings from Database
+  const [deliveryConfig, setDeliveryConfig] = useState({
+    free_delivery_threshold: 999,
+    standard_delivery_fee: 49,
+    express_delivery_fee: 99,
+    midnight_delivery_fee: 149,
+    dispatch_hub_address: "Chingrighata Central Hub, Salt Lake Bypass, Kolkata - 700105",
+  });
+
+  useEffect(() => {
+    fetch("/api/delivery-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) {
+          setDeliveryConfig(data.settings);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Form Error State
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
   const effectivePincode = pincodeOverride ?? selectedPincode;
+  const isPincodeServiceable = serviceablePincodes.includes(effectivePincode.trim());
 
   const defaultSlotFromCart = useMemo<DeliverySlotType>(() => {
     const found = cart.find((item) => item.selectedSlot);
@@ -174,12 +282,14 @@ export default function CheckoutPage() {
   const effectiveCakeMessage = cakeMessageOverride ?? defaultCakeMessage;
   const effectiveCardMessage = cardMessageOverride ?? defaultCardMessage;
 
+  const standardFee = cartSubtotal >= deliveryConfig.free_delivery_threshold ? 0 : deliveryConfig.standard_delivery_fee;
+
   const slotFee =
     effectiveSlotType === "express"
-      ? 99
+      ? deliveryConfig.express_delivery_fee
       : effectiveSlotType === "midnight"
-      ? 149
-      : 0;
+      ? deliveryConfig.midnight_delivery_fee
+      : standardFee;
 
   const slotTimeWindow =
     effectiveSlotType === "express"
@@ -189,8 +299,8 @@ export default function CheckoutPage() {
       : standardWindow;
 
   const { discount: couponDiscount, error: activeCouponError } = useMemo(
-    () => computeCouponDiscount(appliedCoupon, cartSubtotal),
-    [appliedCoupon, cartSubtotal]
+    () => computeDynamicCouponDiscount(appliedCoupon, cartSubtotal, checkoutCoupons),
+    [appliedCoupon, cartSubtotal, checkoutCoupons]
   );
 
   const grandTotal = Math.max(0, cartSubtotal + slotFee - couponDiscount);
@@ -229,7 +339,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    const result = computeCouponDiscount(raw, cartSubtotal);
+    const result = computeDynamicCouponDiscount(raw, cartSubtotal, checkoutCoupons);
     if (result.error) {
       setAppliedCoupon(null);
       setCouponFeedback({ type: "error", text: result.error });
@@ -271,9 +381,9 @@ export default function CheckoutPage() {
     const cleanPin = effectivePincode.trim();
     if (!/^\d{6}$/.test(cleanPin)) {
       errors.push("Please enter a valid 6-digit pincode.");
-    } else if (!cleanPin.startsWith("700") && !cleanPin.startsWith("711")) {
+    } else if (!serviceablePincodes.includes(cleanPin)) {
       errors.push(
-        "Currently we deliver only across Kolkata (700xxx) and Howrah (711xxx) pincodes."
+        `Delivery is not available to pincode ${cleanPin}. We deliver exclusively to Kolkata Central Hub zones (${KOLKATA_HUB_PINCODES.slice(0, 5).join(", ")}, etc.).`
       );
     }
 
@@ -358,6 +468,47 @@ export default function CheckoutPage() {
         grandTotal,
       },
     };
+
+    const customer = getCustomerSession();
+    // Persist order to database so it is live in Admin Orders & Customer My Orders
+    try {
+      fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_number: orderId,
+          customer_name: isGift && senderName.trim() ? senderName.trim() : (customer?.name || recipientName.trim()),
+          customer_email: customer?.email || "customer@msflowers.in",
+          customer_phone: isGift && senderPhone ? senderPhone : (customer?.phone || cleanRecipientPhone),
+          recipient_name: recipientName.trim(),
+          recipient_phone: cleanRecipientPhone,
+          delivery_address: `${flatHouse.trim()}, ${streetLocality.trim()}${landmark.trim() ? `, Near ${landmark.trim()}` : ""}`,
+          area: resolvedAreaLabel,
+          pincode: cleanPin,
+          slot_type: effectiveSlotType,
+          slot_time_window: slotTimeWindow,
+          delivery_date: getDeliveryDateLabel(),
+          items: cart.map((item) => ({
+            id: item.product.id,
+            name: item.product.name,
+            sku: (item.product as any).sku || `MS-${item.product.id.slice(0, 6).toUpperCase()}`,
+            price: item.unitBasePrice,
+            quantity: item.quantity,
+            image: item.product.images?.[0] || "",
+          })),
+          item_count: cart.reduce((acc, it) => acc + it.quantity, 0),
+          items_subtotal: itemsSubtotal,
+          coupon_code: couponDiscount > 0 && appliedCoupon ? appliedCoupon : null,
+          coupon_discount: couponDiscount,
+          slot_fee: slotFee,
+          grand_total: grandTotal,
+          payment_method: "Cash on Delivery (COD)",
+          cake_message: effectiveCakeMessage.trim() || null,
+          card_message: effectiveCardMessage.trim() || null,
+          delivery_note: deliveryNote.trim() || null,
+        }),
+      }).catch((err) => console.warn("Background order sync notice:", err));
+    } catch {}
 
     placeOrder(confirmedOrder);
     router.push("/order-confirmation");
@@ -530,9 +681,15 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="sm:col-span-2 space-y-2">
-                      <label className="block text-xs font-bold text-zinc-700">
-                        Kolkata / Howrah Pincode <span className="text-[#c8102e]">*</span>
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-zinc-700">
+                          Kolkata Hub Pincode <span className="text-[#c8102e]">*</span>
+                        </label>
+                        <span className="text-[11px] font-medium text-zinc-500">
+                          Handwritten Hub Validation Active
+                        </span>
+                      </div>
+
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
                         <input
                           type="text"
@@ -542,8 +699,12 @@ export default function CheckoutPage() {
                           onChange={(e) =>
                             setPincodeOverride(e.target.value.replace(/\D/g, ""))
                           }
-                          placeholder="e.g. 700091"
-                          className="sm:w-44 px-3.5 py-2.5 rounded-xl border border-zinc-300 text-sm font-bold text-zinc-900 focus:outline-hidden focus:border-[#c8102e] focus:ring-2 focus:ring-rose-100"
+                          placeholder="e.g. 700105"
+                          className={`sm:w-44 px-3.5 py-2.5 rounded-xl border text-sm font-bold text-zinc-900 focus:outline-hidden transition-all ${
+                            effectivePincode.length === 6 && !isPincodeServiceable
+                              ? "border-red-500 bg-red-50/20 ring-2 ring-red-100"
+                              : "border-zinc-300 focus:border-[#c8102e] focus:ring-2 focus:ring-rose-100"
+                          }`}
                         />
                         <div className="flex flex-wrap items-center gap-1.5">
                           {QUICK_AREAS.map((area) => {
@@ -565,18 +726,30 @@ export default function CheckoutPage() {
                           })}
                         </div>
                       </div>
-                      {effectivePincode.length === 6 &&
-                        (effectivePincode.startsWith("700") ||
-                        effectivePincode.startsWith("711") ? (
-                          <p className="text-xs font-semibold text-emerald-700">
-                            ✓ Express &amp; Same-Day Delivery Available for {effectivePincode}
-                          </p>
+
+                      {/* Red line indicator when outside serviceable list / Green confirmation when verified */}
+                      {effectivePincode.length === 6 && (
+                        isPincodeServiceable ? (
+                          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-2 rounded-xl">
+                            <span className="text-emerald-600 font-bold">✓</span>
+                            <span>Express &amp; Same-Day Flower/Cake Delivery Available for Kolkata Hub <b>{effectivePincode}</b></span>
+                          </div>
                         ) : (
-                          <p className="text-xs font-semibold text-[#c8102e]">
-                            Currently we deliver to Kolkata (700xxx) &amp; Howrah (711xxx)
-                            pincodes only.
-                          </p>
-                        ))}
+                          <div className="p-3 rounded-xl border-l-4 border-l-red-600 bg-red-50/90 border border-red-200 shadow-xs">
+                            <div className="flex items-start gap-2.5">
+                              <span className="text-red-600 font-bold text-sm leading-none mt-0.5">⚠️</span>
+                              <div className="space-y-0.5">
+                                <p className="text-xs font-bold text-red-700">
+                                  Delivery is not available to pincode {effectivePincode}
+                                </p>
+                                <p className="text-[11px] text-red-600 leading-relaxed">
+                                  We deliver strictly to select Kolkata Central Hub pincodes ({KOLKATA_HUB_PINCODES.slice(0, 6).join(", ")}, etc.). Orders outside these pincodes cannot be accepted. Please select a serviceable hub pincode above.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
 
@@ -1155,7 +1328,7 @@ export default function CheckoutPage() {
                         Available Offers (Tap to apply):
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {COUPONS.map((c) => {
+                        {checkoutCoupons.map((c) => {
                           const isApplied = appliedCoupon === c.code;
                           return (
                             <button

@@ -7,7 +7,12 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
-import { CAKE_CATEGORIES, CAKE_PRODUCTS } from "../data/cakes";
+import type { CategoryTab, Product } from "../data/types";
+import {
+  DEFAULT_PAGE_CONFIGS,
+  formatDbProduct,
+  getPageConfigFromCategories,
+} from "../lib/db";
 
 const SORT_OPTIONS = [
   { id: "popularity", label: "Popularity (Bestsellers)" },
@@ -16,40 +21,14 @@ const SORT_OPTIONS = [
   { id: "rating", label: "Customer Rating (Highest)" },
 ];
 
-const CAKE_OCCASIONS = [
-  {
-    id: "birthday",
-    title: "Birthday Celebrations",
-    subtitle: "Rainbow Confetti & Theme Cakes",
-    tag: "BESTSELLER",
-    image: "/categories/birthday-cake.jpg",
-    categoryTab: "birthday",
-  },
-  {
-    id: "anniversary",
-    title: "Anniversary Romance",
-    subtitle: "Heart-Shaped Red Velvet",
-    tag: "LOVE & HEART",
-    image: "/products/cakes/red-velvet-heart-cake.jpg",
-    categoryTab: "red-velvet",
-  },
-  {
-    id: "midnight",
-    title: "Midnight 12 AM Surprise",
-    subtitle: "Dark Chocolate Truffle Ganache",
-    tag: "12 AM EXPRESS",
-    image: "/products/cakes/chocolate-truffle-cake.jpg",
-    categoryTab: "chocolate",
-  },
-  {
-    id: "bento",
-    title: "Korean Bento Mini Cakes",
-    subtitle: "Cute Lunchbox Birthday Cakes",
-    tag: "TRENDING",
-    image: "/trust/freshly-baked-cakes.jpg",
-    categoryTab: "bento",
-  },
-];
+interface OccasionCardItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+  image: string;
+  categoryTab: string;
+}
 
 const FAQS = [
   {
@@ -73,27 +52,146 @@ const FAQS = [
 function CakesContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
+  const priceParam = searchParams.get("price");
+  const deliveryParam = searchParams.get("delivery");
 
   const [activeCategory, setActiveCategory] = useState(categoryParam || "all");
   const [selectedSort, setSelectedSort] = useState("popularity");
-  const [only90Min, setOnly90Min] = useState(false);
-  const [onlyUnder600, setOnlyUnder600] = useState(false);
+  const [only90Min, setOnly90Min] = useState(deliveryParam === "90-min");
+  const [onlyUnder600, setOnlyUnder600] = useState(priceParam === "under-599");
+  const [priceBand, setPriceBand] = useState<string | null>(
+    priceParam === "600-999" || priceParam === "above-1000" ? priceParam : null
+  );
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
+
+  const [categoriesList, setCategoriesList] = useState<CategoryTab[]>([{ id: "all", label: "All Cakes" }]);
+  const [occasionsList, setOccasionsList] = useState<OccasionCardItem[]>([]);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pageConfig, setPageConfig] = useState(DEFAULT_PAGE_CONFIGS.cakes);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadLiveData() {
+      try {
+        const [catRes, prodRes] = await Promise.all([
+          fetch("/api/categories"),
+          fetch("/api/products?group=Cakes"),
+        ]);
+
+        if (catRes.ok && isMounted) {
+          const json = await catRes.json();
+          if (json.categories && json.categories.length > 0) {
+            const cakeParent = json.categories.find(
+              (c: any) => c.slug === "cakes" && !c.parent_id
+            );
+            if (cakeParent) {
+              const cakeSubs = json.categories.filter(
+                (c: any) =>
+                  c.parent_id === cakeParent.id &&
+                  c.is_active &&
+                  !c.group_name?.startsWith("drawer:") &&
+                  c.group_name !== "page_config"
+              );
+              if (cakeSubs.length > 0) {
+                setCategoriesList([
+                  { id: "all", label: "All Cakes", count: cakeSubs.length },
+                  ...cakeSubs.map((s: any) => ({
+                    id: s.slug,
+                    label: s.name,
+                    image: s.image_url || null,
+                    badge: s.badge || null,
+                  })),
+                ]);
+              }
+            }
+
+            const feat = json.categories.filter(
+              (c: any) =>
+                c.is_featured &&
+                c.is_active &&
+                (c.group_name === "Occasions" || c.group_name === "Cakes Occasions")
+            );
+            if (feat.length > 0) {
+              setOccasionsList(
+                feat.map((f: any) => {
+                  let tab = f.slug;
+                  if (f.slug.includes("birthday")) tab = "birthday";
+                  else if (f.slug.includes("anniversary")) tab = "red-velvet";
+                  else if (f.slug.includes("midnight")) tab = "chocolate";
+                  else if (f.slug.includes("bento")) tab = "bento";
+
+                  return {
+                    id: f.slug,
+                    title: f.name,
+                    subtitle: f.subtitle || "",
+                    tag: f.badge || "SPECIAL",
+                    image: f.image_url || "/categories/birthday-cake.jpg",
+                    categoryTab: tab,
+                  };
+                })
+              );
+            }
+
+            const { config } = getPageConfigFromCategories(json.categories, "cakes");
+            setPageConfig(config);
+          }
+        }
+
+        if (prodRes.ok && isMounted) {
+          const prodJson = await prodRes.json();
+          setProductsList((prodJson.products || []).map(formatDbProduct));
+        }
+      } catch {
+        // network error: leave lists empty
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadLiveData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sync with URL query parameter changes
   useEffect(() => {
-    if (categoryParam) {
-      setActiveCategory(categoryParam);
+    setActiveCategory(categoryParam || "all");
+    setOnly90Min(deliveryParam === "90-min");
+    if (priceParam === "under-599") {
+      setOnlyUnder600(true);
+      setPriceBand(null);
+    } else if (priceParam === "600-999" || priceParam === "above-1000") {
+      setOnlyUnder600(false);
+      setPriceBand(priceParam);
+    } else {
+      setOnlyUnder600(false);
+      setPriceBand(null);
     }
-  }, [categoryParam]);
+  }, [categoryParam, priceParam, deliveryParam]);
 
   // Filter & Sort Logic
   const filteredAndSortedProducts = useMemo(() => {
-    let list = [...CAKE_PRODUCTS];
+    const CAKE_SLUG_ALIAS: Record<string, string[]> = {
+      "chocolate-truffle": ["chocolate"],
+      "dark-chocolate-fantasy": ["chocolate"],
+      "fresh-pineapple": ["fruit"],
+      "butterscotch-crunch": ["fruit"],
+      "seasonal-fresh-fruit": ["fruit"],
+      "bento-mini-cakes": ["bento"],
+      "heart-shaped-cakes": ["red-velvet", "birthday"],
+      "designer-fondant": ["birthday", "bento"],
+    };
+
+    let list = [...productsList];
 
     // Filter by subcategory
     if (activeCategory !== "all") {
-      list = list.filter((item) => item.category === activeCategory);
+      const aliases = CAKE_SLUG_ALIAS[activeCategory] || [];
+      list = list.filter(
+        (item) =>
+          item.category === activeCategory || aliases.includes(item.category)
+      );
     }
 
     // Filter by 90-min delivery
@@ -101,9 +199,13 @@ function CakesContent() {
       list = list.filter((item) => item.deliveryTag === "90-Min Delivery");
     }
 
-    // Filter by budget under 600
+    // Filter by budget / price band
     if (onlyUnder600) {
       list = list.filter((item) => item.price <= 599);
+    } else if (priceBand === "600-999") {
+      list = list.filter((item) => item.price >= 600 && item.price <= 999);
+    } else if (priceBand === "above-1000") {
+      list = list.filter((item) => item.price >= 1000);
     }
 
     // Sort
@@ -119,13 +221,14 @@ function CakesContent() {
     }
 
     return list;
-  }, [activeCategory, selectedSort, only90Min, onlyUnder600]);
+  }, [productsList, activeCategory, selectedSort, only90Min, onlyUnder600, priceBand]);
 
   function resetFilters() {
     setActiveCategory("all");
     setSelectedSort("popularity");
     setOnly90Min(false);
     setOnlyUnder600(false);
+    setPriceBand(null);
   }
 
   return (
@@ -145,7 +248,7 @@ function CakesContent() {
               <>
                 <span>/</span>
                 <span className="text-[#c8102e] font-semibold capitalize">
-                  {CAKE_CATEGORIES.find((c) => c.id === activeCategory)?.label || activeCategory}
+                  {categoriesList.find((c) => c.id === activeCategory)?.label || activeCategory}
                 </span>
               </>
             )}
@@ -158,30 +261,34 @@ function CakesContent() {
             {/* Left Content */}
             <div className="z-10 max-w-xl">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight">
-                Freshly Baked Celebration Cakes
+                {pageConfig.heroTitle}
               </h1>
               <p className="text-xs sm:text-sm text-rose-100 font-medium mt-1.5 leading-relaxed">
-                Baked fresh on order at our Chingrighata central kitchen. 100% pure veg (eggless) available with free name piping &amp; knife.
+                {pageConfig.heroDescription}
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-3.5">
-                <span className="text-xs font-bold bg-white text-rose-950 px-3 py-1.5 rounded-full shadow-xs">
-                  Use Code: CAKE15
-                </span>
-                <span className="text-xs font-semibold text-rose-100">
-                  ⚡ 45–90 Mins Delivery Across Kolkata
-                </span>
+                {pageConfig.promoPill && (
+                  <span className="text-xs font-bold bg-white text-rose-950 px-3 py-1.5 rounded-full shadow-xs">
+                    {pageConfig.promoPill}
+                  </span>
+                )}
+                {pageConfig.deliveryNote && (
+                  <span className="text-xs font-semibold text-rose-100">
+                    {pageConfig.deliveryNote}
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Right Trust Badges */}
             <div className="z-10 flex md:flex-col gap-2 shrink-0 self-start md:self-center">
               <div className="bg-black/20 backdrop-blur-md border border-white/10 rounded-xl px-3.5 py-2 text-left">
-                <p className="text-[10px] uppercase font-bold text-rose-200">Dietary Assurance</p>
-                <p className="text-xs font-bold text-white">100% Eggless Option</p>
+                <p className="text-[10px] uppercase font-bold text-rose-200">{pageConfig.badge1Label}</p>
+                <p className="text-xs font-bold text-white">{pageConfig.badge1Value}</p>
               </div>
               <div className="bg-black/20 backdrop-blur-md border border-white/10 rounded-xl px-3.5 py-2 text-left">
-                <p className="text-[10px] uppercase font-bold text-rose-200">Surprise Slot</p>
-                <p className="text-xs font-bold text-white">12 AM Midnight Guaranteed</p>
+                <p className="text-[10px] uppercase font-bold text-rose-200">{pageConfig.badge2Label}</p>
+                <p className="text-xs font-bold text-white">{pageConfig.badge2Value}</p>
               </div>
             </div>
 
@@ -191,18 +298,18 @@ function CakesContent() {
         </div>
 
         {/* Occasions Visual Grid (Clean Photos) */}
-        <div className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 pt-8 sm:pt-10">
+        <div hidden={occasionsList.length === 0} className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 pt-8 sm:pt-10">
           <div className="mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl 2xl:text-3xl font-extrabold text-zinc-900 tracking-tight">
-              Celebration Cakes For Every Occasion
+              {pageConfig.occasionHeading}
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-              Select handcrafted artisanal cakes tailored for birthdays, anniversaries, and midnight surprises.
+              {pageConfig.occasionSubheading}
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
-            {CAKE_OCCASIONS.map((occ) => (
+            {occasionsList.map((occ) => (
               <div
                 key={occ.id}
                 onClick={() => {
@@ -238,31 +345,61 @@ function CakesContent() {
           </div>
         </div>
 
-        {/* Visual Category Sub-Pills */}
+        {/* Visual Category Photo-Pills */}
         <div id="catalog-grid" className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 pt-8">
-          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-3 scrollbar-hide">
-            {CAKE_CATEGORIES.map((cat) => {
+          <div className="flex sm:flex-wrap items-center gap-2 sm:gap-2.5 overflow-x-auto sm:overflow-visible pb-3 sm:pb-1 scrollbar-hide">
+            {categoriesList.map((cat) => {
               const isActive = activeCategory === cat.id;
+              const hasThumb = cat.id !== "all" && Boolean(cat.image);
               return (
                 <button
                   key={cat.id}
+                  type="button"
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`${
+                    hasThumb ? "pl-1.5 pr-3.5 py-1.5" : "px-4 py-2"
+                  } rounded-full text-xs sm:text-[13px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border shrink-0 ${
                     isActive
-                      ? "bg-[#c8102e] text-white shadow-xs font-bold"
-                      : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
+                      ? "bg-[#c8102e] text-white border-[#c8102e] shadow-sm font-bold"
+                      : "bg-white hover:bg-rose-50/70 text-zinc-800 border-zinc-200/90 hover:border-rose-300 shadow-2xs"
                   }`}
                 >
+                  {hasThumb && (
+                    <span
+                      className={`relative w-7 h-7 rounded-full overflow-hidden shrink-0 border ${
+                        isActive ? "border-white/60 bg-white" : "border-rose-100 bg-rose-50"
+                      }`}
+                    >
+                      <img
+                        src={cat.image!}
+                        alt={cat.label}
+                        className="w-full h-full object-cover"
+                      />
+                    </span>
+                  )}
                   <span>{cat.label}</span>
-                  <span
-                    className={`text-[11px] px-1.5 py-0.2 rounded-full ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-zinc-200 text-zinc-600"
-                    }`}
-                  >
-                    {cat.count}
-                  </span>
+                  {cat.id === "all" && typeof cat.count === "number" && (
+                    <span
+                      className={`text-[11px] px-1.5 py-0.2 rounded-full ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-zinc-100 text-zinc-600"
+                      }`}
+                    >
+                      {cat.count}
+                    </span>
+                  )}
+                  {cat.id !== "all" && cat.badge && (
+                    <span
+                      className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full tracking-tight ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-rose-100 text-rose-700"
+                      }`}
+                    >
+                      {cat.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -340,7 +477,9 @@ function CakesContent() {
 
         {/* Product Grid: Same Clean Card from Home Page */}
         <div className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 py-4">
-          {filteredAndSortedProducts.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16 text-sm text-zinc-500 font-medium">Loading cakes…</div>
+          ) : filteredAndSortedProducts.length === 0 ? (
             <div className="text-center py-16 bg-zinc-50 rounded-2xl border border-dashed border-zinc-300 my-4">
               <p className="text-zinc-600 font-medium">
                 No cakes match your active filter criteria.
@@ -398,15 +537,15 @@ function CakesContent() {
         {/* FAQs Accordion (IGP Style Trust Building) */}
         <div className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 py-8 pb-16">
           <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 tracking-tight mb-4">
-            Frequently Asked Questions about Cake Delivery in Kolkata
+            {pageConfig.faqHeading}
           </h2>
 
           <div className="space-y-3">
-            {FAQS.map((faq, index) => {
+            {pageConfig.faqs.map((faq, index) => {
               const isOpen = expandedFaq === index;
               return (
                 <div
-                  key={faq.q}
+                  key={`${index}-${faq.q}`}
                   className="border border-zinc-200 rounded-xl overflow-hidden transition-all bg-white"
                 >
                   <button

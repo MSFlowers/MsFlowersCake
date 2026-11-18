@@ -7,18 +7,48 @@ import { useState } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ProductReviewsSection from "../../components/ProductReviewsSection";
-import { Product } from "../../data/flowers";
-import { CAKE_PRODUCTS } from "../../data/cakes";
+import { Product } from "../../data/types";
+
 import { useProductReviews } from "../../data/reviewsState";
 import { CartAddon, DeliverySlotType, useShopState } from "../../data/shopState";
 
 interface CakeDetailClientProps {
   product: Product;
+  related?: Product[];
 }
 
-export default function CakeDetailClient({ product }: CakeDetailClientProps) {
-  const images = product.images && product.images.length > 0 ? product.images : [product.image];
+export default function CakeDetailClient({ product, related = [] }: CakeDetailClientProps) {
+  const hasColorGalleries = Boolean(
+    product.colorGalleries &&
+    product.colorGalleries.length > 0 &&
+    product.colorGalleries.some((cg) => cg.images && cg.images.length > 0)
+  );
+  const [selectedColorId, setSelectedColorId] = useState<string>(
+    hasColorGalleries ? product.colorGalleries![0].id : ""
+  );
+
+  const activeColorGallery = hasColorGalleries
+    ? product.colorGalleries!.find((cg) => cg.id === selectedColorId)
+    : null;
+
+  const currentGalleryImages =
+    activeColorGallery && activeColorGallery.images.length > 0
+      ? activeColorGallery.images
+      : (product.images && product.images.length > 0 ? product.images : [product.image]);
+
+  const images = currentGalleryImages;
   const [activeImage, setActiveImage] = useState(images[0]);
+
+  // Dynamic variants support from DB
+  const hasDbVariants = Boolean(product.variants && product.variants.length > 0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(
+    hasDbVariants ? product.variants![0].id : ""
+  );
+
+  const activeVariant = hasDbVariants
+    ? product.variants!.find((v) => v.id === selectedVariantId) || product.variants![0]
+    : null;
+
   const [pincode, setPincode] = useState("700001");
   const [isPincodeValid, setIsPincodeValid] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState("Standard");
@@ -51,10 +81,14 @@ export default function CakeDetailClient({ product }: CakeDetailClientProps) {
     (addons.rose ? addonPrices.rose : 0) +
     (addons.card ? addonPrices.card : 0);
 
-  // Weight price multiplier
+  // Weight / Variant price
   const weightMultiplier = selectedWeight === "1kg" ? 1.85 : 1;
-  const currentBasePrice = Math.round(product.price * weightMultiplier);
-  const currentOriginalPrice = Math.round(product.originalPrice * weightMultiplier);
+  const currentBasePrice = activeVariant
+    ? activeVariant.price
+    : Math.round(product.price * weightMultiplier);
+  const currentOriginalPrice = activeVariant
+    ? (activeVariant.originalPrice || activeVariant.price)
+    : Math.round(product.originalPrice * weightMultiplier);
   const totalPrice = currentBasePrice + addonTotal;
 
   const discountPercent = Math.round(
@@ -98,7 +132,9 @@ export default function CakeDetailClient({ product }: CakeDetailClientProps) {
       unitBasePrice: currentBasePrice,
       unitOriginalPrice: currentOriginalPrice,
       weight:
-        product.category !== "bento"
+        activeVariant
+          ? activeVariant.name
+          : product.category !== "bento"
           ? selectedWeight
           : product.weight || "250g Bento",
       selectedSlot: mappedSlot,
@@ -120,7 +156,7 @@ export default function CakeDetailClient({ product }: CakeDetailClientProps) {
     router.push("/checkout");
   }
 
-  const relatedCakes = CAKE_PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4);
+  const relatedCakes = related;
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-zinc-900 font-sans">
@@ -415,40 +451,108 @@ export default function CakeDetailClient({ product }: CakeDetailClientProps) {
               </span>
             </div>
 
-            {/* Cake Weight Selector */}
-            {product.category !== "bento" && (
+            {/* Color Shade Swatches (Dynamic from DB) */}
+            {hasColorGalleries && (
               <div>
                 <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-700 mb-2">
-                  Select Cake Weight:
+                  Select Shade / Color:
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedWeight("500g")}
-                    className={`py-2.5 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-bold flex flex-col sm:flex-row sm:items-center justify-between text-left gap-0.5 cursor-pointer transition-all ${
-                      selectedWeight === "500g"
-                        ? "border-[#c8102e] bg-rose-50/70 text-[#c8102e] shadow-xs"
-                        : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
-                    }`}
-                  >
-                    <span>500g (Standard)</span>
-                    <span className="text-[11px] sm:text-xs font-medium opacity-80">Serves 4-6</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedWeight("1kg")}
-                    className={`py-2.5 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-bold flex flex-col sm:flex-row sm:items-center justify-between text-left gap-0.5 cursor-pointer transition-all ${
-                      selectedWeight === "1kg"
-                        ? "border-[#c8102e] bg-rose-50/70 text-[#c8102e] shadow-xs"
-                        : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
-                    }`}
-                  >
-                    <span>1 kg (Party Size)</span>
-                    <span className="text-[11px] sm:text-xs font-medium opacity-80">Serves 8-12</span>
-                  </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {product.colorGalleries!.map((cg) => {
+                    const isSel = cg.id === selectedColorId;
+                    return (
+                      <button
+                        key={cg.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedColorId(cg.id);
+                          if (cg.images && cg.images.length > 0) setActiveImage(cg.images[0]);
+                        }}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer ${
+                          isSel
+                            ? "border-[#c8102e] bg-rose-50 text-[#c8102e] shadow-xs"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300"
+                        }`}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
+                          style={{ backgroundColor: cg.colorCode }}
+                        />
+                        <span>{cg.colorName}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+            )}
+
+            {/* Cake Variant / Weight Selector (Dynamic from DB) */}
+            {hasDbVariants ? (
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-700 mb-2">
+                  Select Option / Weight:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {product.variants!.map((v) => {
+                    const isSel = v.id === activeVariant?.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVariantId(v.id)}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col justify-between text-left gap-1 cursor-pointer transition-all ${
+                          isSel
+                            ? "border-[#c8102e] bg-rose-50/70 text-[#c8102e] shadow-xs"
+                            : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
+                        }`}
+                      >
+                        <span>{v.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-zinc-950">₹{v.price}</span>
+                          {v.originalPrice && v.originalPrice > v.price && (
+                            <span className="text-[10px] text-zinc-400 line-through">₹{v.originalPrice}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              product.category !== "bento" && (
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-700 mb-2">
+                    Select Cake Weight:
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWeight("500g")}
+                      className={`py-2.5 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-bold flex flex-col sm:flex-row sm:items-center justify-between text-left gap-0.5 cursor-pointer transition-all ${
+                        selectedWeight === "500g"
+                          ? "border-[#c8102e] bg-rose-50/70 text-[#c8102e] shadow-xs"
+                          : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
+                      }`}
+                    >
+                      <span>500g (Standard)</span>
+                      <span className="text-[11px] sm:text-xs font-medium opacity-80">Serves 4-6</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWeight("1kg")}
+                      className={`py-2.5 px-3 sm:px-4 rounded-xl border text-xs sm:text-sm font-bold flex flex-col sm:flex-row sm:items-center justify-between text-left gap-0.5 cursor-pointer transition-all ${
+                        selectedWeight === "1kg"
+                          ? "border-[#c8102e] bg-rose-50/70 text-[#c8102e] shadow-xs"
+                          : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
+                      }`}
+                    >
+                      <span>1 kg (Party Size)</span>
+                      <span className="text-[11px] sm:text-xs font-medium opacity-80">Serves 8-12</span>
+                    </button>
+                  </div>
+                </div>
+              )
             )}
 
             {/* Pincode & Delivery Checker */}

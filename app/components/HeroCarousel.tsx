@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 interface HeroSlide {
   id: string;
@@ -16,16 +16,17 @@ interface HeroSlide {
   cardBg: string;
 }
 
-const HERO_SLIDES: HeroSlide[] = [
+const DEFAULT_HERO_SLIDES: HeroSlide[] = [
   {
     id: "anniversary",
     headline: "Anniversary Flowers & Cakes",
     headlineColor: "text-[#b91c1c]",
     subtitle: "for every love story",
+    badge: "ANNIVERSARY SPECIAL",
     ctaLabel: "SHOP NOW",
     ctaHref: "#combos",
-    desktopImageSrc: "/banners/anniversary-desktop.jpg",
-    mobileImageSrc: "/banners/anniversary-mobile.jpg",
+    desktopImageSrc: "https://ik.imagekit.io/2zqgtm5bv/hero-slides/anniversary-desktop.jpg",
+    mobileImageSrc: "https://ik.imagekit.io/2zqgtm5bv/hero-slides/anniversary-mobile.jpg",
     cardBg: "bg-linear-to-b from-[#f5e4d7] via-[#f7e9df] to-[#fbf2ec]",
   },
   {
@@ -33,10 +34,11 @@ const HERO_SLIDES: HeroSlide[] = [
     headline: "Sweeten Every",
     headlineColor: "text-[#4c1d95]",
     subtitle: "Celebration",
+    badge: "FRESH BAKED",
     ctaLabel: "ORDER CAKES",
     ctaHref: "#cakes",
-    desktopImageSrc: "/banners/cakes-desktop.jpg",
-    mobileImageSrc: "/banners/cakes-mobile.jpg",
+    desktopImageSrc: "https://ik.imagekit.io/2zqgtm5bv/hero-slides/cakes-desktop.jpg",
+    mobileImageSrc: "https://ik.imagekit.io/2zqgtm5bv/hero-slides/cakes-mobile.jpg",
     cardBg: "bg-linear-to-b from-[#f1d6bf] via-[#f3dbc6] to-[#f4e0ce]",
   },
   {
@@ -44,56 +46,96 @@ const HERO_SLIDES: HeroSlide[] = [
     headline: "Birthday",
     headlineColor: "text-[#e11d48]",
     subtitle: "Party Essentials",
+    badge: "PARTY READY",
     ctaLabel: "EXPLORE ALL",
     ctaHref: "#birthday",
-    desktopImageSrc: "/banners/birthday-desktop.jpg",
-    mobileImageSrc: "/banners/birthday-mobile.jpg",
+    desktopImageSrc: "https://ik.imagekit.io/2zqgtm5bv/hero-slides/birthday-desktop.jpg",
+    mobileImageSrc: "https://ik.imagekit.io/2zqgtm5bv/hero-slides/birthday-mobile.jpg",
     cardBg: "bg-linear-to-b from-[#fbdadd] via-[#fce4e6] to-[#fdf1f2]",
   },
 ];
 
-const SLIDE_COUNT = HERO_SLIDES.length;
-const EXTENDED_SLIDES = [...HERO_SLIDES, ...HERO_SLIDES, ...HERO_SLIDES];
-
 export default function HeroCarousel() {
-  const [trackIndex, setTrackIndex] = useState(SLIDE_COUNT);
-  const [isTransitioning, setIsTransitioning] = useState(true);
-
-  const activeIndex = ((trackIndex % SLIDE_COUNT) + SLIDE_COUNT) % SLIDE_COUNT;
+  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_HERO_SLIDES);
 
   useEffect(() => {
+    async function fetchDynamicSlides() {
+      try {
+        const res = await fetch("/api/hero-slides");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.slides) && data.slides.length > 0) {
+          const mapped: HeroSlide[] = data.slides.map((s: any) => ({
+            id: s.id,
+            headline: s.headline,
+            headlineColor: s.headline_color || "text-[#b91c1c]",
+            subtitle: s.subtitle,
+            badge: s.badge || undefined,
+            ctaLabel: s.cta_label || "SHOP NOW",
+            ctaHref: s.cta_href || "#combos",
+            desktopImageSrc: s.desktop_image_url || "https://ik.imagekit.io/2zqgtm5bv/hero-slides/anniversary-desktop.jpg",
+            mobileImageSrc: s.mobile_image_url || "https://ik.imagekit.io/2zqgtm5bv/hero-slides/anniversary-mobile.jpg",
+            cardBg: s.card_bg || "bg-linear-to-b from-[#f5e4d7] via-[#f7e9df] to-[#fbf2ec]",
+          }));
+          setSlides(mapped);
+        }
+      } catch (err) {
+        // Keep default ImageKit slides fallback
+      }
+    }
+    fetchDynamicSlides();
+  }, []);
+
+  const slideCount = slides.length;
+  const extendedSlides = useMemo(() => {
+    return [...slides, ...slides, ...slides];
+  }, [slides]);
+
+  const [trackIndex, setTrackIndex] = useState(slideCount);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+
+  // Sync trackIndex when slideCount changes
+  useEffect(() => {
+    setTrackIndex(slideCount);
+  }, [slideCount]);
+
+  const activeIndex = slideCount > 0 ? ((trackIndex % slideCount) + slideCount) % slideCount : 0;
+
+  useEffect(() => {
+    if (slideCount <= 1) return;
     const timer = setTimeout(() => {
       setIsTransitioning(true);
       setTrackIndex((prev) =>
-        prev >= SLIDE_COUNT * 2 + 1 ? SLIDE_COUNT + (prev % SLIDE_COUNT) + 1 : prev + 1
+        prev >= slideCount * 2 + 1 ? slideCount + (prev % slideCount) + 1 : prev + 1
       );
     }, 5500);
     return () => clearTimeout(timer);
-  }, [trackIndex]);
+  }, [trackIndex, slideCount]);
 
   function handlePrev() {
+    if (slideCount <= 1) return;
     setIsTransitioning(true);
     setTrackIndex((prev) =>
-      prev <= 0 ? SLIDE_COUNT + (((prev % SLIDE_COUNT) + SLIDE_COUNT) % SLIDE_COUNT) - 1 : prev - 1
+      prev <= 0 ? slideCount + (((prev % slideCount) + slideCount) % slideCount) - 1 : prev - 1
     );
   }
 
   function handleNext() {
+    if (slideCount <= 1) return;
     setIsTransitioning(true);
     setTrackIndex((prev) =>
-      prev >= SLIDE_COUNT * 2 + 1 ? SLIDE_COUNT + (prev % SLIDE_COUNT) + 1 : prev + 1
+      prev >= slideCount * 2 + 1 ? slideCount + (prev % slideCount) + 1 : prev + 1
     );
   }
 
   function handleSelectDot(index: number) {
     setIsTransitioning(true);
-    setTrackIndex(SLIDE_COUNT + index);
+    setTrackIndex(slideCount + index);
   }
 
   function handleTrackTransitionEnd(e: React.TransitionEvent<HTMLDivElement>) {
-    if (e.target !== e.currentTarget) return;
-    if (trackIndex >= SLIDE_COUNT * 2 || trackIndex < SLIDE_COUNT) {
-      const normalized = SLIDE_COUNT + (((trackIndex % SLIDE_COUNT) + SLIDE_COUNT) % SLIDE_COUNT);
+    if (e.target !== e.currentTarget || slideCount === 0) return;
+    if (trackIndex >= slideCount * 2 || trackIndex < slideCount) {
+      const normalized = slideCount + (((trackIndex % slideCount) + slideCount) % slideCount);
       setIsTransitioning(false);
       setTrackIndex(normalized);
     }
@@ -130,7 +172,7 @@ export default function HeroCarousel() {
           fill
           sizes="(max-width: 639px) 100vw, 1px"
           className="object-contain sm:hidden"
-          priority={idx >= SLIDE_COUNT && idx < SLIDE_COUNT * 2}
+          priority={idx >= slideCount && idx < slideCount * 2}
         />
 
         {/* Desktop Ambient Backdrop + 16:9 Uncropped Right-Aligned Image */}
@@ -149,7 +191,7 @@ export default function HeroCarousel() {
             fill
             sizes="(min-width: 1024px) 68vw, 100vw"
             className="object-contain object-right"
-            priority={idx >= SLIDE_COUNT && idx < SLIDE_COUNT * 2}
+            priority={idx >= slideCount && idx < slideCount * 2}
           />
         </div>
 
@@ -195,7 +237,7 @@ export default function HeroCarousel() {
       aria-label="Featured Flowers and Cakes Offers"
       className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 pt-3 pb-6 w-full"
     >
-      {/* IGP-Style Infinite Conveyor Peek Hero Carousel */}
+      {/* Conveyor Peek Hero Carousel */}
       <div className="relative group">
         <div className="overflow-hidden rounded-2xl [--slide-step:calc(100%+1rem)] lg:[--slide-step:calc(68%+1rem)] 2xl:[--slide-step:calc(70%+1.25rem)]">
           <div
@@ -209,11 +251,11 @@ export default function HeroCarousel() {
               transform: `translate3d(calc(-1 * ${trackIndex} * var(--slide-step)), 0, 0)`,
             }}
           >
-            {EXTENDED_SLIDES.map((slide, idx) => renderSlideCard(slide, idx))}
+            {extendedSlides.map((slide, idx) => renderSlideCard(slide, idx))}
           </div>
         </div>
 
-        {/* Left & Right Hover-Only Frosted Glass Arrow Buttons */}
+        {/* Left & Right Hover-Only Arrow Buttons */}
         <button
           type="button"
           onClick={handlePrev}
@@ -252,7 +294,7 @@ export default function HeroCarousel() {
 
       {/* Pagination Dots */}
       <div className="flex items-center justify-center gap-2 mt-4">
-        {HERO_SLIDES.map((slide, index) => {
+        {slides.map((slide, index) => {
           const isActive = index === activeIndex;
           return (
             <button
@@ -271,39 +313,37 @@ export default function HeroCarousel() {
         })}
       </div>
 
-      {/* Our Promise Full-Width Floral Artistic Ribbon */}
-        <div className="mt-4 2xl:mt-6">
-          <div className="relative rounded-2xl overflow-hidden border border-rose-200/80 shadow-xs py-3.5 sm:py-4.5 2xl:py-5 px-5 sm:px-8 2xl:px-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-center">
-            {/* Floral Background Image */}
-            <Image
-              src="/backgrounds/promise-floral-bg.jpg"
-              alt="MS Floral Promise"
-              fill
-              sizes="(min-width: 1680px) 1600px, 100vw"
-              className="object-cover object-center pointer-events-none"
-              priority
-            />
-            {/* Translucent veil for pristine text legibility */}
-            <div className="absolute inset-0 bg-white/45 backdrop-blur-[1px] pointer-events-none" />
+      {/* Our Promise Full-Width Floral Ribbon */}
+      <div className="mt-4 2xl:mt-6">
+        <div className="relative rounded-2xl overflow-hidden border border-rose-200/80 shadow-xs py-3.5 sm:py-4.5 2xl:py-5 px-5 sm:px-8 2xl:px-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-center">
+          <Image
+            src="/backgrounds/promise-floral-bg.jpg"
+            alt="MS Floral Promise"
+            fill
+            sizes="(min-width: 1680px) 1600px, 100vw"
+            className="object-cover object-center pointer-events-none"
+            priority
+          />
+          <div className="absolute inset-0 bg-white/45 backdrop-blur-[1px] pointer-events-none" />
 
-            <div className="relative z-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-              <span className="text-rose-500 text-lg 2xl:text-xl hidden sm:inline drop-shadow-xs" aria-hidden="true">
-                ✿
+          <div className="relative z-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+            <span className="text-rose-500 text-lg 2xl:text-xl hidden sm:inline drop-shadow-xs" aria-hidden="true">
+              ✿
+            </span>
+            <p className="text-sm sm:text-lg 2xl:text-xl leading-snug">
+              <span className="text-[#c8102e] font-black text-base sm:text-xl 2xl:text-2xl mr-2 tracking-tight drop-shadow-xs">
+                Our Promise!
               </span>
-              <p className="text-sm sm:text-lg 2xl:text-xl leading-snug">
-                <span className="text-[#c8102e] font-black text-base sm:text-xl 2xl:text-2xl mr-2 tracking-tight drop-shadow-xs">
-                  Our Promise!
-                </span>
-                <span className="text-zinc-900 font-extrabold tracking-tight">
-                  You focus on the emotions, We take care of the execution!
-                </span>
-              </p>
-              <span className="text-rose-500 text-lg 2xl:text-xl hidden sm:inline drop-shadow-xs" aria-hidden="true">
-                ✿
+              <span className="text-zinc-900 font-extrabold tracking-tight">
+                You focus on the emotions, We take care of the execution!
               </span>
-            </div>
+            </p>
+            <span className="text-rose-500 text-lg 2xl:text-xl hidden sm:inline drop-shadow-xs" aria-hidden="true">
+              ✿
+            </span>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
   );
 }

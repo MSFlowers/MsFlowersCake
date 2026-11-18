@@ -129,7 +129,10 @@ export default function TrustFeatures() {
               {TRUST_PILLARS.map((pillar) => (
                 <div key={pillar.id} className="w-full shrink-0 flex flex-col">
                   {/* Photo with Perfect Fit - 1:1 Square (Never Cut Off) */}
-                  <div className="relative aspect-square w-full bg-rose-50 overflow-hidden">
+                  <div
+                    className="relative aspect-square w-full bg-rose-50 overflow-hidden"
+                    style={{ position: "relative", aspectRatio: "1 / 1" }}
+                  >
                     <Image
                       src={pillar.imageSrc}
                       alt={pillar.alt}
@@ -209,7 +212,10 @@ export default function TrustFeatures() {
               className="group bg-white rounded-3xl overflow-hidden border border-rose-100/90 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-xl hover:border-rose-200 hover:-translate-y-1.5 transition-all duration-300 flex flex-col"
             >
               {/* Photorealistic Hero Image */}
-              <div className="relative aspect-square w-full overflow-hidden bg-rose-50">
+              <div
+                className="relative aspect-square w-full overflow-hidden bg-rose-50"
+                style={{ position: "relative", aspectRatio: "1 / 1" }}
+              >
                 <Image
                   src={pillar.imageSrc}
                   alt={pillar.alt}

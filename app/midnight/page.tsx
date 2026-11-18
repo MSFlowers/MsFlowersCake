@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
-import { CAKE_PRODUCTS } from "../data/cakes";
-import { COMBO_PRODUCTS } from "../data/combos";
-import { FLOWER_PRODUCTS, Product } from "../data/flowers";
+import type { Product } from "../data/types";
+import { formatDbProduct } from "../lib/db";
 
 const MIDNIGHT_TABS = [
   { id: "all", label: "All Midnight Specials" },
@@ -49,18 +48,30 @@ export default function MidnightPage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
 
   // Curated list of midnight special products
-  const midnightProducts = useMemo(() => {
-    const cakes = CAKE_PRODUCTS.slice(0, 4).map((p) => ({ ...p, itemType: "cakes" }));
-    const flowers = [FLOWER_PRODUCTS[0], FLOWER_PRODUCTS[3], FLOWER_PRODUCTS[4]].map((p) => ({
-      ...p,
-      itemType: "flowers",
-    }));
-    const combos = [COMBO_PRODUCTS[0], COMBO_PRODUCTS[1], COMBO_PRODUCTS[4], COMBO_PRODUCTS[7]].map(
-      (p) => ({ ...p, itemType: "combos" })
-    );
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    return [...combos, ...cakes, ...flowers];
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/products")
+      .then((r) => (r.ok ? r.json() : { products: [] }))
+      .then((json) => {
+        if (alive) setAllProducts((json.products || []).map(formatDbProduct));
+      })
+      .catch(() => {})
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  const midnightProducts = useMemo(
+    () =>
+      allProducts
+        .filter((p) => p.isMidnight)
+        .map((p) => ({ ...p, itemType: (p.group || "Cakes").toLowerCase() })),
+    [allProducts]
+  );
 
   // Filter & Sort Logic
   const filteredAndSortedProducts = useMemo(() => {
@@ -255,7 +266,9 @@ export default function MidnightPage() {
 
         {/* Product Grid: Same Clean Card from Home Page */}
         <div className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 py-4">
-          {filteredAndSortedProducts.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16 text-sm text-zinc-500 font-medium">Loading midnight specials…</div>
+          ) : filteredAndSortedProducts.length === 0 ? (
             <div className="text-center py-16 bg-zinc-50 rounded-2xl border border-dashed border-zinc-300 my-4">
               <p className="text-zinc-600 font-medium">
                 No midnight items match your active filter criteria.

@@ -1,217 +1,112 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Product, ProductReview } from "./flowers";
-
-// In-memory store for reviews submitted during the current SPA session (React state backed, no browser storage)
-const userAddedReviewsMap = new Map<string, ProductReview[]>();
-const listeners = new Set<() => void>();
-
-function notifyListeners() {
-  listeners.forEach((listener) => listener());
-}
-
-/**
- * Provides authentic supplementary Kolkata buyer reviews tailored to the product type
- * so every product displays rich feedback across the 2-review preview and full reviews page.
- */
-function getSupplementaryReviews(product: Product): ProductReview[] {
-  const isCake = product.id.startsWith("ck-");
-  const isCombo = product.id.startsWith("cb-");
-
-  if (isCake) {
-    return [
-      {
-        id: `${product.id}-supp-1`,
-        author: "Riddhima Chatterjee",
-        city: "Southern Avenue",
-        rating: 5,
-        date: "6 days ago",
-        comment:
-          "Ordered for my mother's birthday dinner. The sponge was super moist, frosting wasn't overly sweet, and delivery arrived chilled right on time.",
-      },
-      {
-        id: `${product.id}-supp-2`,
-        author: "Sayan Chakraborty",
-        city: "New Town Action Area I",
-        rating: 4,
-        date: "2 weeks ago",
-        comment:
-          "Great presentation and neat piping for the custom message. The rigid cake box kept every edge intact despite evening traffic.",
-      },
-      {
-        id: `${product.id}-supp-3`,
-        author: "Nandini Basu",
-        city: "Lake Gardens",
-        rating: 5,
-        date: "3 weeks ago",
-        comment:
-          "Pure veg bakery quality that genuinely feels artisanal. Everyone at the table asked where we ordered the cake from.",
-      },
-      {
-        id: `${product.id}-supp-4`,
-        author: "Debashish Sen",
-        city: "Salt Lake BE Block",
-        rating: 5,
-        date: "1 month ago",
-        comment:
-          "Midnight delivery slot was punctual to the minute. Packed neatly with candles and a wooden knife.",
-      },
-    ];
-  }
-
-  if (isCombo) {
-    return [
-      {
-        id: `${product.id}-supp-1`,
-        author: "Tanushree Bose",
-        city: "Ballygunge Circular Rd",
-        rating: 5,
-        date: "5 days ago",
-        comment:
-          "Both the blooms and the cake reached together in one synchronized delivery. Saved me from coordinating two separate orders!",
-      },
-      {
-        id: `${product.id}-supp-2`,
-        author: "Anirban Dutta",
-        city: "Salt Lake Sector II",
-        rating: 5,
-        date: "1 week ago",
-        comment:
-          "Very thoughtful luxury packaging. The handwritten greeting card added such a warm personal touch to the anniversary surprise.",
-      },
-      {
-        id: `${product.id}-supp-3`,
-        author: "Koyel Mitra",
-        city: "Hindustan Park",
-        rating: 4,
-        date: "2 weeks ago",
-        comment:
-          "Fresh flowers and delicious eggless cake at a great combo value. Delivery rider called gently at the gate as requested.",
-      },
-      {
-        id: `${product.id}-supp-4`,
-        author: "Subhankar Roy",
-        city: "Tollygunge",
-        rating: 5,
-        date: "3 weeks ago",
-        comment:
-          "Exactly as pictured on the site. No last-minute substitutions and the blooms lasted days afterward.",
-      },
-    ];
-  }
-
-  return [
-    {
-      id: `${product.id}-supp-1`,
-      author: "Rituparna Sen",
-      city: "Ballygunge Place",
-      rating: 5,
-      date: "6 days ago",
-      comment:
-        "Fresh morning-cut stems with a lovely natural fragrance. The wrapping paper and satin ribbon looked straight out of a boutique studio.",
-    },
-    {
-      id: `${product.id}-supp-2`,
-      author: "Kaushik Bhattacharya",
-      city: "Salt Lake City Centre",
-      rating: 5,
-      date: "2 weeks ago",
-      comment:
-        "Arrived in hydration wraps within 80 minutes of ordering. My parents loved the handwritten message card that came along.",
-    },
-    {
-      id: `${product.id}-supp-3`,
-      author: "Poulomi Ganguly",
-      city: "Jodhpur Park",
-      rating: 4,
-      date: "3 weeks ago",
-      comment:
-        "Crisp petals and generous fillers. Trimmed the stems as per the care guide and the arrangement stayed vibrant for nearly a week.",
-    },
-    {
-      id: `${product.id}-supp-4`,
-      author: "Indrajit Saha",
-      city: "New Alipore",
-      rating: 5,
-      date: "1 month ago",
-      comment:
-        "Reliable express flower delivery in Kolkata. Never disappoints for birthdays or last-minute celebration wishes.",
-    },
-  ];
-}
+import { Product, ProductReview } from "./types";
+import { getStoredCustomer, getStoredToken } from "../lib/customerAuth";
 
 export interface NewReviewInput {
-  author: string;
-  city: string;
+  author?: string;
+  city?: string;
   rating: number;
   comment: string;
+  title?: string;
+  photo_url?: string;
 }
 
-/**
- * Hook returning merged reviews (user-submitted in React state + product static reviews + supplementary reviews),
- * live review count, average rating, and an addReview mutator.
- */
 export function useProductReviews(product: Product) {
-  const [userReviews, setUserReviews] = useState<ProductReview[]>(
-    () => userAddedReviewsMap.get(product.id) ?? []
-  );
+  const [dbReviews, setDbReviews] = useState<ProductReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [avgRating, setAvgRating] = useState<number>(product.rating || 5.0);
+
+  const fetchApprovedReviews = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/reviews?productId=${encodeURIComponent(product.id)}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.reviews)) {
+        const mapped: ProductReview[] = data.reviews.map((r: any) => ({
+          id: r.id,
+          author: r.customer_name || "Verified Customer",
+          city: "Kolkata Hub",
+          rating: r.rating || 5,
+          date: r.created_at
+            ? new Date(r.created_at).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : "Recently",
+          comment: r.comment,
+        }));
+        setDbReviews(mapped);
+        if (typeof data.avgRating === "number") {
+          setAvgRating(data.avgRating);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load dynamic reviews", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [product.id, product.rating]);
 
   useEffect(() => {
-    const sync = () => {
-      setUserReviews([...(userAddedReviewsMap.get(product.id) ?? [])]);
-    };
-    sync();
-    listeners.add(sync);
-    return () => {
-      listeners.delete(sync);
-    };
-  }, [product.id]);
+    fetchApprovedReviews();
+  }, [fetchApprovedReviews]);
 
   const addReview = useCallback(
-    (input: NewReviewInput) => {
-      const cleanAuthor = input.author.trim();
-      const cleanCity = input.city.trim() || "Kolkata";
-      const cleanComment = input.comment.trim();
-      if (!cleanAuthor || !cleanComment) return;
+    async (input: NewReviewInput) => {
+      const customer = getStoredCustomer();
+      const token = getStoredToken();
 
-      const newReview: ProductReview = {
-        id: `user-rev-${Date.now()}`,
-        author: cleanAuthor,
-        city: cleanCity,
-        rating: Math.min(5, Math.max(1, Math.round(input.rating))),
-        date: "Just now",
-        comment: cleanComment,
+      if (!customer) {
+        throw new Error("You must be logged in to submit a verified review.");
+      }
+
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          product_name: product.name,
+          product_image: product.images?.[0] || "",
+          rating: input.rating,
+          title: input.title || "",
+          comment: input.comment,
+          photo_url: input.photo_url || null,
+          customer_name: customer.name,
+          customer_email: customer.email,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit review");
+      }
+
+      return {
+        success: true,
+        pending: true,
+        message: data.message || "Thank you! Your review has been submitted for moderation and will appear once approved by our team.",
       };
-
-      const existing = userAddedReviewsMap.get(product.id) ?? [];
-      userAddedReviewsMap.set(product.id, [newReview, ...existing]);
-      notifyListeners();
     },
-    [product.id]
+    [product]
   );
 
   const reviews = useMemo(() => {
-    const base = product.reviews ?? [];
-    const supplementary = getSupplementaryReviews(product);
-    const seen = new Set<string>();
-    const combined: ProductReview[] = [];
+    return dbReviews;
+  }, [dbReviews]);
 
-    for (const rev of [...userReviews, ...base, ...supplementary]) {
-      if (!seen.has(rev.id)) {
-        seen.add(rev.id);
-        combined.push(rev);
-      }
-    }
-    return combined;
-  }, [product, userReviews]);
-
-  const totalCount = product.reviewsCount + userReviews.length;
+  const totalCount = dbReviews.length;
 
   return {
     reviews,
-    userReviewsCount: userReviews.length,
     totalCount,
+    avgRating,
+    loading,
     addReview,
+    refreshReviews: fetchApprovedReviews,
   };
 }

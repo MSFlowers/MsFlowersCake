@@ -77,3 +77,33 @@ html {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+
+/* Sleek pink/floral scrollbar for Admin Dashboard & tables */
+.floral-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #fda4af transparent;
+}
+
+.floral-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.floral-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.floral-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.floral-scroll::-webkit-scrollbar-thumb {
+  background-color: #fda4af;
+  border-radius: 9999px;
+}
+
+.floral-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #e11d48;
+}

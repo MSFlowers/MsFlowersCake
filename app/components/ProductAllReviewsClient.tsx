@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
-import { Product } from "../data/flowers";
+import { Product } from "../data/types";
 import { NewReviewInput, useProductReviews } from "../data/reviewsState";
 import {
   EditorialReviewItem,
@@ -55,11 +55,15 @@ export default function ProductAllReviewsClient({
     ];
   }, [product.rating]);
 
-  function handlePublish(input: NewReviewInput) {
-    addReview(input);
-    setFilter("all");
-    setJustPublished(true);
-    setTimeout(() => setJustPublished(false), 5000);
+  async function handlePublish(input: NewReviewInput) {
+    try {
+      await addReview(input);
+      setFilter("all");
+      setJustPublished(true);
+      setTimeout(() => setJustPublished(false), 8000);
+    } catch (err: any) {
+      alert(err.message || "Failed to submit review");
+    }
   }
 
   return (
@@ -240,19 +244,14 @@ export default function ProductAllReviewsClient({
           </div>
 
           {justPublished && (
-            <div className="mt-4 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs font-bold text-emerald-800 flex items-center gap-2">
-              <svg
-                className="w-4 h-4 shrink-0"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Thank you! Your review has been added to the top of the list.
+            <div className="mt-4 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-950 flex items-start gap-2.5 shadow-2xs">
+              <span className="text-amber-600 text-base leading-none">⏳</span>
+              <div>
+                <p className="font-extrabold text-amber-950">Review Submitted for Moderation!</p>
+                <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+                  Thank you! Your verified review has been submitted for approval and will appear on this product once approved by our moderation team.
+                </p>
+              </div>
             </div>
           )}
 

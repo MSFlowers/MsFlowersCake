@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { Product } from "./flowers";
+import { Product } from "./types";
 
 export interface CartAddon {
   id: string;
