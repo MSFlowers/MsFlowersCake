@@ -18,6 +18,8 @@ export interface StoreSettingsData {
   tagline: string;
   support_phone: string;
   support_email: string;
+  order_notification_email: string;
+  order_email_notifications_enabled: boolean;
   address: string;
   operating_hours: string;
   midnight_hours: string;
@@ -35,12 +37,20 @@ export function StoreSettingsView() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testEmailMsg, setTestEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Form Fields
   const [storeName, setStoreName] = useState(DEFAULT_STORE_SETTINGS.store_name);
   const [tagline, setTagline] = useState(DEFAULT_STORE_SETTINGS.tagline);
   const [supportPhone, setSupportPhone] = useState(DEFAULT_STORE_SETTINGS.support_phone);
   const [supportEmail, setSupportEmail] = useState(DEFAULT_STORE_SETTINGS.support_email);
+  const [orderNotificationEmail, setOrderNotificationEmail] = useState(
+    DEFAULT_STORE_SETTINGS.order_notification_email
+  );
+  const [orderEmailNotificationsEnabled, setOrderEmailNotificationsEnabled] = useState(
+    DEFAULT_STORE_SETTINGS.order_email_notifications_enabled
+  );
   const [address, setAddress] = useState(DEFAULT_STORE_SETTINGS.address);
   const [operatingHours, setOperatingHours] = useState(DEFAULT_STORE_SETTINGS.operating_hours);
   const [midnightHours, setMidnightHours] = useState(DEFAULT_STORE_SETTINGS.midnight_hours);
@@ -63,6 +73,14 @@ export function StoreSettingsView() {
         setTagline(data.settings.tagline || DEFAULT_STORE_SETTINGS.tagline);
         setSupportPhone(data.settings.support_phone || DEFAULT_STORE_SETTINGS.support_phone);
         setSupportEmail(data.settings.support_email || DEFAULT_STORE_SETTINGS.support_email);
+        setOrderNotificationEmail(
+          data.settings.order_notification_email || DEFAULT_STORE_SETTINGS.order_notification_email
+        );
+        setOrderEmailNotificationsEnabled(
+          data.settings.order_email_notifications_enabled !== undefined
+            ? Boolean(data.settings.order_email_notifications_enabled)
+            : DEFAULT_STORE_SETTINGS.order_email_notifications_enabled
+        );
         setAddress(data.settings.address || DEFAULT_STORE_SETTINGS.address);
         setOperatingHours(data.settings.operating_hours || DEFAULT_STORE_SETTINGS.operating_hours);
         setMidnightHours(data.settings.midnight_hours || DEFAULT_STORE_SETTINGS.midnight_hours);
@@ -91,6 +109,8 @@ export function StoreSettingsView() {
     setTagline(DEFAULT_STORE_SETTINGS.tagline);
     setSupportPhone(DEFAULT_STORE_SETTINGS.support_phone);
     setSupportEmail(DEFAULT_STORE_SETTINGS.support_email);
+    setOrderNotificationEmail(DEFAULT_STORE_SETTINGS.order_notification_email);
+    setOrderEmailNotificationsEnabled(DEFAULT_STORE_SETTINGS.order_email_notifications_enabled);
     setAddress(DEFAULT_STORE_SETTINGS.address);
     setOperatingHours(DEFAULT_STORE_SETTINGS.operating_hours);
     setMidnightHours(DEFAULT_STORE_SETTINGS.midnight_hours);
@@ -116,6 +136,8 @@ export function StoreSettingsView() {
         tagline: tagline,
         support_phone: supportPhone,
         support_email: supportEmail,
+        order_notification_email: orderNotificationEmail,
+        order_email_notifications_enabled: orderEmailNotificationsEnabled,
         address: address,
         operating_hours: operatingHours,
         midnight_hours: midnightHours,
@@ -146,6 +168,33 @@ export function StoreSettingsView() {
       setErrorMsg(err.message || "Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSendTestEmail() {
+    setSendingTest(true);
+    setTestEmailMsg(null);
+    try {
+      const res = await fetch("/api/admin/test-order-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: orderNotificationEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to send test email");
+      }
+      setTestEmailMsg({
+        type: "success",
+        text: data.message || "Test order email sent successfully!",
+      });
+    } catch (err: any) {
+      setTestEmailMsg({
+        type: "error",
+        text: err?.message || "Failed to send test email",
+      });
+    } finally {
+      setSendingTest(false);
     }
   }
 
@@ -239,6 +288,81 @@ export function StoreSettingsView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Form: 7 Columns */}
         <div className="lg:col-span-7 space-y-6">
+          {/* Card 0: Order Email Notifications */}
+          <div className="rounded-2xl border border-rose-200/80 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-rose-50">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                  <MailIcon className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">
+                    Order Email Notifications
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Receive instant email alerts whenever a new COD or online order is placed
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={orderEmailNotificationsEnabled}
+                onClick={() => setOrderEmailNotificationsEnabled((prev) => !prev)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                  orderEmailNotificationsEnabled ? "bg-emerald-500" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ${
+                    orderEmailNotificationsEnabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-gray-700">
+                Notification Recipient Email(s)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <input
+                  type="text"
+                  value={orderNotificationEmail}
+                  onChange={(e) => setOrderNotificationEmail(e.target.value)}
+                  placeholder="rohit62952332@gmail.com"
+                  className="flex-1 rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 py-2 text-xs font-medium text-gray-900 focus:bg-white focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  disabled={sendingTest || loading || !orderNotificationEmail.trim()}
+                  className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+                >
+                  {sendingTest ? "Sending..." : "Send Test Email"}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-500">
+                Private — not shown on the storefront. Separate multiple emails with commas (e.g.{" "}
+                <code>owner@gmail.com, manager@gmail.com</code>). Remember to click{" "}
+                <strong>Save All Changes</strong> after editing.
+              </p>
+            </div>
+
+            {testEmailMsg && (
+              <div
+                className={`rounded-xl px-3.5 py-2.5 text-xs font-semibold border ${
+                  testEmailMsg.type === "success"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-red-50 border-red-200 text-red-800"
+                }`}
+              >
+                {testEmailMsg.text}
+              </div>
+            )}
+          </div>
+
           {/* Card 1: Contact Details & Florist Hub */}
           <div className="rounded-2xl border border-rose-100 bg-white p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2.5 pb-3 border-b border-rose-50">

@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase";
 import { getRazorpay, verifyRazorpaySignature } from "@/app/lib/razorpay";
+import { sendAdminOrderNotification } from "@/app/lib/email";
 
 function parseToYyyyMmDd(val: any): string {
   if (!val) return new Date().toISOString().split("T")[0];
@@ -285,6 +286,39 @@ export async function createOrder(body: any, trusted = false) {
       }
     } catch (coupErr) {
       console.warn("Could not update coupon stats:", coupErr);
+    }
+
+    // Send order alert email to configured admin email(s) — never fail order if email fails
+    try {
+      await sendAdminOrderNotification({
+        order_number: newOrder?.order_number || orderNumber,
+        customer_name: customerName || "Customer",
+        customer_email: customerEmail || "customer@msflowers.in",
+        customer_phone: customerPhone || "9830012345",
+        recipient_name: recipientName || customerName,
+        recipient_phone: recipientPhone || customerPhone,
+        delivery_address: deliveryAddress || "Kolkata Hub Zone",
+        area: area || `Kolkata, ${trimmedPincode}`,
+        pincode: trimmedPincode,
+        delivery_date: deliveryDateStr,
+        slot_label: slotLabel,
+        payment_method: isOnline ? "Online (Razorpay)" : paymentMethod,
+        payment_status: isOnline ? "Paid" : "Pending",
+        order_status: isOnline ? "Confirmed" : "Pending",
+        items: enrichedItems,
+        items_subtotal: itemsSubtotal || grandTotal,
+        slot_fee: slotFee,
+        coupon_code: couponCode,
+        coupon_discount: couponDiscount,
+        total_amount: grandTotal,
+        cake_message: cakeMessage,
+        card_message: cardMessage,
+        delivery_note: deliveryNote,
+        occasion: occasion,
+        razorpay_payment_id: rzpPaymentId,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send admin order notification email:", emailErr);
     }
 
     return NextResponse.json({

@@ -63,6 +63,8 @@ export const DEFAULT_STORE_SETTINGS = {
     "Kolkata’s trusted boutique destination for fresh handpicked flower bouquets, artisanal celebration cakes, and romantic flower + cake combos.",
   support_phone: "+91 6295233296",
   support_email: "rohit62952332@gmail.com",
+  order_notification_email: "rohit62952332@gmail.com",
+  order_email_notifications_enabled: true,
   address: "Chingrighata, Salt Lake, Kolkata, West Bengal - 700105",
   operating_hours: "Open Daily: 8:00 AM – 11:30 PM",
   midnight_hours: "Midnight Delivery Available (Till 12:30 AM)",
