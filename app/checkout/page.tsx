@@ -598,6 +598,7 @@ export default function CheckoutPage() {
         currency: createData.currency,
         name: "MS Flowers",
         description: `Order ${orderId}`,
+        image: `${window.location.origin}/ms-logo.jpg`,
         order_id: createData.razorpayOrderId,
         prefill: {
           name: customer?.name || recipientName.trim(),
@@ -1196,7 +1197,7 @@ export default function CheckoutPage() {
                   </div>
                 </section>
 
-                {/* STEP 4: PAYMENT METHOD (ONLY COD ACTIVE, OTHERS COMING SOON) */}
+                {/* STEP 4: PAYMENT METHOD */}
                 <section className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-zinc-200/90 shadow-2xs space-y-4">
                   <div className="flex items-center gap-3 pb-3 border-b border-zinc-100">
                     <span className="w-7 h-7 rounded-full bg-[#c8102e] text-white text-xs font-black flex items-center justify-center shrink-0">
@@ -1215,26 +1216,53 @@ export default function CheckoutPage() {
                   <div className="space-y-3">
                     {/* Online Payment (Razorpay) */}
                     <label
-                      className={`flex items-start justify-between gap-3 p-4 rounded-2xl border-2 cursor-pointer ${
-                        paymentChoice === "online" ? "border-[#c8102e] bg-rose-50/40" : "border-zinc-200 bg-white"
+                      className={`flex items-start justify-between gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-colors ${
+                        paymentChoice === "online" ? "border-[#c8102e] bg-rose-50/40" : "border-zinc-200 bg-white hover:border-zinc-300"
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
                         <input
                           type="radio"
                           name="paymentMethod"
                           value="online"
                           checked={paymentChoice === "online"}
                           onChange={() => setPaymentChoice("online")}
-                          className="mt-1 w-4 h-4 accent-[#c8102e]"
+                          className="mt-1 w-4 h-4 accent-[#c8102e] shrink-0"
                         />
-                        <div>
-                          <span className="text-sm font-extrabold text-zinc-950 block">
-                            Pay Online (UPI / Cards / NetBanking / Wallets)
-                          </span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-extrabold text-zinc-950">
+                              Pay Online (UPI / Cards / NetBanking / Wallets)
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white border border-zinc-200 shadow-2xs shrink-0">
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="w-3.5 h-3.5 shrink-0"
+                                aria-hidden="true"
+                              >
+                                <path d="M14.5 2L9.2 14.3l3.1 1.9L19.5 2h-5z" fill="#3395FF" />
+                                <path d="M9.8 9.2L4.5 22h5.2l3.8-9.1-3.7-3.7z" fill="#072654" />
+                              </svg>
+                              <span className="text-[11px] font-extrabold tracking-tight text-[#072654]">
+                                Razorpay
+                              </span>
+                            </span>
+                          </div>
                           <p className="text-xs text-zinc-600 font-medium mt-1">
-                            Secure payment via Razorpay – Google Pay, PhonePe, Paytm, Visa, Mastercard, RuPay &amp; more.
+                            100% secure checkout via Razorpay — instant confirmation.
                           </p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            {["UPI", "GPay", "PhonePe", "Paytm", "Visa", "Mastercard", "RuPay"].map(
+                              (badge) => (
+                                <span
+                                  key={badge}
+                                  className="px-2 py-0.5 rounded-md bg-white/90 border border-zinc-200/90 text-[10px] font-bold text-zinc-700"
+                                >
+                                  {badge}
+                                </span>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
                       <span className="text-sm font-black text-zinc-950 shrink-0">₹{grandTotal}</span>
