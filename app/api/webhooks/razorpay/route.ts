@@ -30,13 +30,20 @@ async function finalizePaidOrder(razorpayOrderId: string, razorpayPaymentId: str
     return;
   }
 
-  // Already saved by the browser? (payment id unique) -> nothing to do
-  const { data: existing } = await supabaseAdmin
+  // Already saved by the browser or an earlier webhook event? -> nothing to do
+  const { data: existingByPayment } = await supabaseAdmin
     .from("orders")
     .select("id")
     .eq("razorpay_payment_id", razorpayPaymentId)
     .maybeSingle();
-  if (existing) {
+  const { data: existingByOrder } = existingByPayment
+    ? { data: existingByPayment }
+    : await supabaseAdmin
+        .from("orders")
+        .select("id")
+        .eq("razorpay_order_id", razorpayOrderId)
+        .maybeSingle();
+  if (existingByOrder) {
     await supabaseAdmin
       .from("razorpay_pending_orders")
       .update({ status: "completed" })

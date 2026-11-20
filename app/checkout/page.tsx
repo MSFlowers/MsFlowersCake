@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { ShoppingBagIcon, CheckCircleIcon, AlertTriangleIcon, CloseIcon } from "../components/StorefrontIcons";
@@ -273,6 +273,15 @@ export default function CheckoutPage() {
   // Payment state
   const [paymentChoice, setPaymentChoice] = useState<"cod" | "online">("online");
   const [isPaying, setIsPaying] = useState(false);
+  const submittingRef = useRef(false);
+  const pendingRzpRef = useRef<{
+    fingerprint: string;
+    orderId: string;
+    razorpayOrderId: string;
+    amount: number;
+    currency: string;
+    keyId?: string;
+  } | null>(null);
 
   // Form Error State
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -379,6 +388,7 @@ export default function CheckoutPage() {
 
   async function handleSubmitOrder(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     const errors: string[] = [];
 
     if (!recipientName.trim()) {
@@ -435,7 +445,30 @@ export default function CheckoutPage() {
 
     setPincodeInfo(cleanPin, resolvedAreaLabel);
 
-    const orderId = `#MSF-${Math.floor(10000 + Math.random() * 90000)}`;
+    const checkoutFingerprint = JSON.stringify({
+      grandTotal,
+      items: cart.map((i) => [i.cartItemId, i.quantity, i.unitBasePrice]),
+      recipientName: recipientName.trim(),
+      cleanRecipientPhone,
+      flatHouse: flatHouse.trim(),
+      streetLocality: streetLocality.trim(),
+      cleanPin,
+      dateChoice,
+      customDate,
+      effectiveSlotType,
+      slotTimeWindow,
+      appliedCoupon,
+    });
+
+    const reusableRzp =
+      paymentChoice === "online" &&
+      pendingRzpRef.current &&
+      pendingRzpRef.current.fingerprint === checkoutFingerprint
+        ? pendingRzpRef.current
+        : null;
+
+    const orderId =
+      reusableRzp?.orderId || `#MSF-${Math.floor(10000 + Math.random() * 90000)}`;
     const placedAt = new Date().toLocaleString("en-IN", {
       day: "numeric",
       month: "short",
@@ -559,6 +592,7 @@ export default function CheckoutPage() {
         setFormErrors([
           `Payment received (ID: ${payment.razorpay_payment_id}) but we could not save your order. Please contact us with this payment ID.`,
         ]);
+        submittingRef.current = false;
         setIsPaying(false);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -567,39 +601,62 @@ export default function CheckoutPage() {
       console.warn("Order placement warning:", e);
     }
 
+    pendingRzpRef.current = null;
     placeOrder(confirmedOrder);
     router.push("/order-confirmation");
     };
 
     if (paymentChoice === "cod") {
-      await persistAndFinish();
+      submittingRef.current = true;
+      setIsPaying(true);
+      try {
+        await persistAndFinish();
+      } catch (err: any) {
+        setFormErrors([err?.message || "Could not place order. Please try again."]);
+        submittingRef.current = false;
+        setIsPaying(false);
+      }
       return;
     }
 
     // ---- Online payment via Razorpay ----
+    submittingRef.current = true;
     setIsPaying(true);
     try {
       const ok = await loadRazorpayScript();
       if (!ok) throw new Error("Could not load payment gateway. Check your internet and retry.");
 
-      const createRes = await fetch("/api/razorpay/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: grandTotal, receipt: orderId.replace("#", ""), order: buildOrderBody() }),
-      });
-      const createData = await createRes.json();
-      if (!createRes.ok || !createData.razorpayOrderId) {
-        throw new Error(createData.error || "Could not start payment.");
+      let rzpSession = reusableRzp;
+      if (!rzpSession) {
+        const createRes = await fetch("/api/razorpay/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: grandTotal, receipt: orderId.replace("#", ""), order: buildOrderBody() }),
+        });
+        const createData = await createRes.json();
+        if (!createRes.ok || !createData.razorpayOrderId) {
+          throw new Error(createData.error || "Could not start payment.");
+        }
+        rzpSession = {
+          fingerprint: checkoutFingerprint,
+          orderId,
+          razorpayOrderId: createData.razorpayOrderId,
+          amount: createData.amount,
+          currency: createData.currency,
+          keyId: createData.keyId,
+        };
+        pendingRzpRef.current = rzpSession;
       }
 
+      let paymentHandled = false;
       const rzp = new (window as any).Razorpay({
-        key: createData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: createData.amount,
-        currency: createData.currency,
+        key: rzpSession.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: rzpSession.amount,
+        currency: rzpSession.currency,
         name: "MS Flowers",
         description: `Order ${orderId}`,
         image: `${window.location.origin}/ms-logo.jpg`,
-        order_id: createData.razorpayOrderId,
+        order_id: rzpSession.razorpayOrderId,
         prefill: {
           name: customer?.name || recipientName.trim(),
           email: customer?.email || undefined,
@@ -607,9 +664,16 @@ export default function CheckoutPage() {
         },
         theme: { color: "#c8102e" },
         modal: {
-          ondismiss: () => setIsPaying(false),
+          ondismiss: () => {
+            if (!paymentHandled) {
+              submittingRef.current = false;
+              setIsPaying(false);
+            }
+          },
         },
         handler: async (resp: any) => {
+          if (paymentHandled) return;
+          paymentHandled = true;
           await persistAndFinish({
             razorpay_order_id: resp.razorpay_order_id,
             razorpay_payment_id: resp.razorpay_payment_id,
@@ -619,12 +683,12 @@ export default function CheckoutPage() {
       });
       rzp.on("payment.failed", (resp: any) => {
         setFormErrors([resp?.error?.description || "Payment failed. Please try again or choose COD."]);
-        setIsPaying(false);
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
       rzp.open();
     } catch (err: any) {
       setFormErrors([err?.message || "Payment could not be started."]);
+      submittingRef.current = false;
       setIsPaying(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }

@@ -87,7 +87,9 @@ export default function OrderConfirmationPage() {
               <div className="text-xs sm:text-sm font-semibold text-zinc-700">
                 <span className="text-zinc-500">Payment Mode: </span>
                 <span className="font-bold text-zinc-950">
-                  Cash on Delivery (Amount to pay on delivery: ₹{lastOrder.pricing.grandTotal})
+                  {lastOrder.paymentMethod === "Online (Razorpay)"
+                    ? `Online (Razorpay) — Paid ₹${lastOrder.pricing.grandTotal}`
+                    : `Cash on Delivery (Amount to pay on delivery: ₹${lastOrder.pricing.grandTotal})`}
                 </span>
               </div>
             </section>

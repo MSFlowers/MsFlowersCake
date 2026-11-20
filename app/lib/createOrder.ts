@@ -152,15 +152,26 @@ export async function createOrder(body: any, trusted = false) {
           { status: 400 }
         );
       }
-      // Prevent reusing the same payment for multiple orders
-      const { data: dup } = await supabaseAdmin
+      // Prevent reusing the same payment or Razorpay order for multiple orders
+      const { data: dupByPayment } = await supabaseAdmin
         .from("orders")
         .select("id")
         .eq("razorpay_payment_id", rzpPaymentId)
         .maybeSingle();
-      if (dup) {
+      if (dupByPayment) {
         return NextResponse.json(
           { error: "This payment is already linked to an order" },
+          { status: 409 }
+        );
+      }
+      const { data: dupByOrder } = await supabaseAdmin
+        .from("orders")
+        .select("id")
+        .eq("razorpay_order_id", rzpOrderId)
+        .maybeSingle();
+      if (dupByOrder) {
+        return NextResponse.json(
+          { error: "This Razorpay order is already linked to an order" },
           { status: 409 }
         );
       }
