@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
+import { StarIcon } from "./StorefrontIcons";
 import { Product } from "../data/types";
 import { NewReviewInput, useProductReviews } from "../data/reviewsState";
 import {
@@ -26,7 +27,7 @@ export default function ProductAllReviewsClient({
   categoryPath,
   categoryLabel,
 }: ProductAllReviewsClientProps) {
-  const { reviews, totalCount, addReview } = useProductReviews(product);
+  const { reviews, totalCount, avgRating, addReview } = useProductReviews(product);
   const [filter, setFilter] = useState<RatingFilter>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
@@ -45,15 +46,21 @@ export default function ProductAllReviewsClient({
   }, [reviews, filter]);
 
   const breakdown = useMemo(() => {
-    const baseFive = product.rating >= 4.95 ? 92 : product.rating >= 4.85 ? 86 : 79;
-    const baseFour = product.rating >= 4.95 ? 7 : product.rating >= 4.85 ? 11 : 16;
-    const baseThree = 100 - baseFive - baseFour;
-    return [
-      { stars: 5, percent: baseFive },
-      { stars: 4, percent: baseFour },
-      { stars: 3, percent: baseThree },
-    ];
-  }, [product.rating]);
+    if (totalCount === 0) {
+      return [
+        { stars: 5, percent: 0 },
+        { stars: 4, percent: 0 },
+        { stars: 3, percent: 0 },
+      ];
+    }
+    return [5, 4, 3].map((s) => {
+      const matchCount = reviews.filter((r) => Math.round(r.rating) === s).length;
+      return {
+        stars: s,
+        percent: Math.round((matchCount / totalCount) * 100),
+      };
+    });
+  }, [reviews, totalCount]);
 
   async function handlePublish(input: NewReviewInput) {
     try {
@@ -99,7 +106,7 @@ export default function ProductAllReviewsClient({
             href={productHref}
             className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#c8102e] hover:underline shrink-0"
           >
-            ← Back to {product.name}
+            Back to {product.name}
           </Link>
         </div>
 
@@ -145,11 +152,11 @@ export default function ProductAllReviewsClient({
             <div className="lg:col-span-4 flex items-center gap-6 border-t lg:border-t-0 lg:border-l border-zinc-100 pt-5 lg:pt-0 lg:pl-7">
               <div className="shrink-0">
                 <div className="text-4xl font-black text-zinc-950 leading-none">
-                  {product.rating.toFixed(1)}
+                  {totalCount > 0 ? avgRating.toFixed(1) : "0.0"}
                 </div>
                 <div className="mt-2">
                   <StarRatingDisplay
-                    rating={product.rating}
+                    rating={totalCount > 0 ? avgRating : 0}
                     sizeClass="w-4 h-4"
                   />
                 </div>
@@ -164,8 +171,9 @@ export default function ProductAllReviewsClient({
                     key={row.stars}
                     className="flex items-center gap-2 text-xs"
                   >
-                    <span className="w-7 font-bold text-zinc-700 shrink-0">
-                      {row.stars} ★
+                    <span className="w-8 font-bold text-zinc-700 shrink-0 inline-flex items-center gap-0.5">
+                      <span>{row.stars}</span>
+                      <StarIcon className="w-3 h-3 text-amber-500 fill-amber-500" />
                     </span>
                     <div className="flex-1 h-2 rounded-full bg-zinc-100 overflow-hidden">
                       <div

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { signJwt, hashPassword, verifyPassword } from "@/app/lib/jwt";
 import { supabaseAdmin } from "@/app/lib/supabase";
 
-const MASTER_ADMIN_EMAIL = "admin@msflowers.in";
-const MASTER_ADMIN_PASSWORD = "Msflowers@0302";
+// Credentials come from env (ADMIN_EMAIL / ADMIN_PASSWORD); never hardcode them.
+const MASTER_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").trim();
+const MASTER_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 
 export async function POST(req: Request) {
   try {
@@ -31,15 +32,17 @@ export async function POST(req: Request) {
 
     // 1. Direct master credentials verification
     if (
+      MASTER_ADMIN_EMAIL &&
+      MASTER_ADMIN_PASSWORD &&
       trimmedEmail === MASTER_ADMIN_EMAIL.toLowerCase() &&
       trimmedPassword === MASTER_ADMIN_PASSWORD
     ) {
       isMatch = true;
 
-      // Sync/upsert into customers DB table in background
+      // Sync/upsert into customers DB table without blocking the login response
       try {
         const hashedPassword = hashPassword(MASTER_ADMIN_PASSWORD);
-        await supabaseAdmin
+        supabaseAdmin
           .from("customers")
           .upsert(
             {
@@ -50,6 +53,10 @@ export async function POST(req: Request) {
               role: "admin",
             },
             { onConflict: "email" }
+          )
+          .then(
+            () => {},
+            (e: unknown) => console.warn("Admin DB sync warning:", e)
           );
       } catch (err) {
         // Non-blocking DB sync
@@ -87,7 +94,7 @@ export async function POST(req: Request) {
       {
         id: "admin-root",
         name: "Administrator",
-        email: MASTER_ADMIN_EMAIL,
+        email: trimmedEmail,
         phone: "+91 6295233296",
         role: "admin",
       },

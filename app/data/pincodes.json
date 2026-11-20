@@ -1,0 +1,122 @@
+[
+  {
+    "id": "p1",
+    "pincode": "700105",
+    "area_name": "Chingrighata / Salt Lake Bypass Hub",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:00:00.000Z"
+  },
+  {
+    "id": "p2",
+    "pincode": "700091",
+    "area_name": "Salt Lake Sector V / Technopolis",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:05:00.000Z"
+  },
+  {
+    "id": "p3",
+    "pincode": "700098",
+    "area_name": "Salt Lake Stadium / Beliaghata Bypass",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:10:00.000Z"
+  },
+  {
+    "id": "p4",
+    "pincode": "700106",
+    "area_name": "Salt Lake Sector III / Broadway",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:15:00.000Z"
+  },
+  {
+    "id": "p5",
+    "pincode": "700068",
+    "area_name": "Bagmari / Ultadanga Main",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T10:20:00.000Z"
+  },
+  {
+    "id": "p6",
+    "pincode": "700010",
+    "area_name": "Beliaghata / CIT Road",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:25:00.000Z"
+  },
+  {
+    "id": "p7",
+    "pincode": "700015",
+    "area_name": "Tangra / Seal Lane / Entally",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:30:00.000Z"
+  },
+  {
+    "id": "p8",
+    "pincode": "700054",
+    "area_name": "Phoolbagan / Kankurgachi",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:35:00.000Z"
+  },
+  {
+    "id": "p9",
+    "pincode": "700067",
+    "area_name": "Ultadanga / Bidhan Nagar Station",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T10:40:00.000Z"
+  },
+  {
+    "id": "p10",
+    "pincode": "700101",
+    "area_name": "Lake Town / Bangur Avenue",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T10:45:00.000Z"
+  },
+  {
+    "id": "p11",
+    "pincode": "700052",
+    "area_name": "VIP Road / Kaikhali Crossing",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T10:50:00.000Z"
+  },
+  {
+    "id": "p12",
+    "pincode": "700046",
+    "area_name": "Topsia / Tangra South Bypass",
+    "delivery_time": "45–60 Mins Express",
+    "is_active": true,
+    "created_at": "2026-11-18T10:55:00.000Z"
+  },
+  {
+    "id": "p13",
+    "pincode": "700042",
+    "area_name": "Kasba / Ruby Hospital EM Bypass",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T11:00:00.000Z"
+  },
+  {
+    "id": "p14",
+    "pincode": "700107",
+    "area_name": "Anandapur / Kasba East / Ruby Area",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T11:05:00.000Z"
+  },
+  {
+    "id": "p15",
+    "pincode": "700156",
+    "area_name": "New Town Action Area I / Eco Park",
+    "delivery_time": "60–90 Mins Hub Slot",
+    "is_active": true,
+    "created_at": "2026-11-18T11:10:00.000Z"
+  }
+]

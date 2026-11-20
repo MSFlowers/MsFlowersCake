@@ -30,7 +30,7 @@ export default function OrderConfirmationPage() {
                 href="/"
                 className="inline-flex items-center gap-1.5 text-sm font-bold text-[#c8102e] hover:underline"
               >
-                ← Back to Home
+                Back to Home
               </Link>
             </div>
           </div>
@@ -304,7 +304,7 @@ export default function OrderConfirmationPage() {
                 href="/"
                 className="inline-flex items-center gap-1.5 text-sm font-bold text-[#c8102e] hover:underline"
               >
-                ← Back to Home
+                Back to Home
               </Link>
             </div>
           </div>

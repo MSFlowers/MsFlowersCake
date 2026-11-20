@@ -71,5 +71,5 @@ export const DEFAULT_STORE_SETTINGS = {
   facebook_url: "https://www.facebook.com/profile.php?id=61596205570248",
   instagram_url: "https://instagram.com/msflowers_kolkata",
   copyright_text: "© 2026 MS: Online Flowers and Cake Delivery in Kolkata. All rights reserved.",
-  handcrafted_text: "Handcrafted with ❤️ in Chingrighata, Salt Lake, Kolkata",
+  handcrafted_text: "Handcrafted in Chingrighata, Salt Lake, Kolkata",
 };

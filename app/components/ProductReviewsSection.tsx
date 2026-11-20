@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Product, ProductReview } from "../data/types";
 import { NewReviewInput, useProductReviews } from "../data/reviewsState";
+import { CheckCircleIcon, ClockIcon, PenLineIcon } from "./StorefrontIcons";
 import { getStoredCustomer } from "../lib/customerAuth";
 
 const QUICK_LOCALITIES = [
@@ -282,8 +283,8 @@ export function WriteReviewModal({
           <form onSubmit={handleSubmit} className="pt-5 space-y-4">
             {/* Verified Buyer Badge */}
             <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-xs shadow-2xs">
-              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
-                ✓
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center shrink-0">
+                <CheckCircleIcon className="w-4 h-4 text-white" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-emerald-950 truncate">
@@ -397,7 +398,7 @@ export function WriteReviewModal({
 
             {/* Moderation Disclaimer Notice */}
             <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
-              <span className="text-amber-600 font-bold">⏳</span>
+              <ClockIcon className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
                 <b>Approval Flow:</b> Your review will be submitted in <b>Pending</b> status. Our moderation team will verify it, after which it will appear publicly on this product page.
               </p>
@@ -468,16 +469,29 @@ export default function ProductReviewsSection({
       <div className="pb-5 border-b border-zinc-200/80 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-3xl font-black text-zinc-950">
-            {totalCount > 0 ? avgRating.toFixed(1) : product.rating.toFixed(1)}
+            {totalCount > 0 ? avgRating.toFixed(1) : "0.0"}
             <svg
-              className="w-6 h-6 fill-amber-400 text-amber-400"
+              className={`w-6 h-6 ${
+                totalCount > 0 ? "fill-amber-400 text-amber-400" : "fill-zinc-200 text-zinc-200"
+              }`}
               viewBox="0 0 20 20"
             >
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
             </svg>
+            {totalCount === 0 && (
+              <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
+                New
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Sync
+            </span>
           </div>
           <p className="text-xs text-zinc-500 font-semibold mt-0.5">
-            Based on {totalCount} verified approved reviews in Kolkata
+            {totalCount > 0
+              ? `Based on ${totalCount} verified approved review${totalCount > 1 ? "s" : ""} in Kolkata`
+              : "No verified reviews yet. Be the first to review!"}
           </p>
         </div>
 
@@ -534,12 +548,23 @@ export default function ProductReviewsSection({
         <span className="text-xs font-medium text-zinc-500">
           Showing {latestReviews.length} latest of {totalCount} verified reviews
         </span>
-        <Link
-          href={`/${categoryPath}/${productSlug}/reviews`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-[#c8102e] text-white text-xs sm:text-sm font-bold transition-colors"
-        >
-          View All {totalCount} Reviews →
-        </Link>
+        {totalCount > 0 ? (
+          <Link
+            href={`/${categoryPath}/${productSlug}/reviews`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-[#c8102e] text-white text-xs sm:text-sm font-bold transition-colors"
+          >
+            View All {totalCount} Reviews
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-[#c8102e] text-white text-xs font-bold transition-colors cursor-pointer"
+          >
+            <span>Write First Review</span>
+            <PenLineIcon className="w-3.5 h-3.5 text-white" />
+          </button>
+        )}
       </div>
 
       <WriteReviewModal

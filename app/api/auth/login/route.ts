@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     // 1. Fetch customer by email
     const { data: customer, error: dbError } = await supabaseAdmin
       .from("customers")
-      .select("id, name, email, phone, password, role")
+      .select("id, name, email, phone, password, role, email_verified")
       .eq("email", trimmedEmail)
       .maybeSingle();
 
@@ -51,6 +51,16 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Invalid password. Please check your credentials." },
         { status: 401 }
+      );
+    }
+
+    if (customer.role !== "admin" && customer.email_verified === false) {
+      return NextResponse.json(
+        {
+          error: "Please verify your email first. Check your inbox for the verification link.",
+          code: "EMAIL_NOT_VERIFIED",
+        },
+        { status: 403 }
       );
     }
 

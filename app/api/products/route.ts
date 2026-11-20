@@ -133,7 +133,6 @@ export async function POST(req: NextRequest) {
           is_active: is_active !== false,
           is_midnight: Boolean(is_midnight),
           reviews: Array.isArray(reviews) ? reviews : [],
-          sort_order: typeof sort_order === "number" ? sort_order : 0,
           variants: Array.isArray(variants) ? variants : [],
           color_galleries: Array.isArray(color_galleries) ? color_galleries : [],
         },
@@ -158,7 +157,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, categories: _c, sub_categories: _s, created_at: _ca, updated_at: _ua, ...updates } = body;
+    const { id, categories: _c, sub_categories: _s, created_at: _ca, updated_at: _ua, sort_order: _so, ...updates } = body;
 
     if (!id) {
       return NextResponse.json(

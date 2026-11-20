@@ -22,11 +22,28 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  function getTargetDestination() {
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const from = params.get("from");
+        if (from && from.startsWith("/admin") && from !== "/admin/login") {
+          return from;
+        }
+        const savedTab = localStorage.getItem("ms_admin_active_tab");
+        if (savedTab && savedTab !== "dashboard") {
+          return `/admin/dashboard?tab=${encodeURIComponent(savedTab)}`;
+        }
+      } catch {}
+    }
+    return "/admin/dashboard";
+  }
+
   useEffect(() => {
     let isCancelled = false;
     async function checkExistingAuth() {
       if (session.isAuthenticated) {
-        router.replace("/admin/dashboard");
+        router.replace(getTargetDestination());
         return;
       }
       try {
@@ -35,7 +52,7 @@ export default function AdminLoginPage() {
           const data = await res.json();
           if (data.authenticated && data.admin && !isCancelled) {
             loginAdmin(data.admin.email, data.admin.name);
-            router.replace("/admin/dashboard");
+            router.replace(getTargetDestination());
           }
         }
       } catch {
@@ -86,7 +103,7 @@ export default function AdminLoginPage() {
 
       // Valid JWT token signed & cookie set
       loginAdmin(data.admin.email, data.admin.name, data.token);
-      router.push("/admin/dashboard");
+      router.push(getTargetDestination());
     } catch (err: any) {
       setError(err?.message || "Network error. Please try again.");
       setSubmitting(false);
@@ -106,7 +123,6 @@ export default function AdminLoginPage() {
             href="/"
             className="inline-flex items-center gap-1.5 hover:text-rose-700 transition-colors"
           >
-            <span>&larr;</span>
             <span>Back to MS Flowers Store</span>
           </Link>
           <span className="rounded-full bg-emerald-100/90 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">

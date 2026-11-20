@@ -7,6 +7,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
+import { ZapIcon, TagIcon, MapPinIcon } from "../components/StorefrontIcons";
 import type { CategoryTab, Product } from "../data/types";
 import {
   DEFAULT_PAGE_CONFIGS,
@@ -267,8 +268,9 @@ function CombosContent() {
                   </span>
                 )}
                 {pageConfig.deliveryNote && (
-                  <span className="text-xs font-semibold text-rose-100">
-                    {pageConfig.deliveryNote}
+                  <span className="text-xs font-semibold text-rose-100 inline-flex items-center gap-1.5">
+                    <ZapIcon className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                    <span>{pageConfig.deliveryNote.replace(/^[\u26A1\s]+/, "")}</span>
                   </span>
                 )}
               </div>
@@ -413,25 +415,27 @@ function CombosContent() {
               <button
                 type="button"
                 onClick={() => setOnly90Min(!only90Min)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   only90Min
                     ? "bg-purple-100 border-purple-300 text-purple-900 font-bold"
                     : "bg-white border-zinc-300 text-zinc-700 hover:border-zinc-400"
                 }`}
               >
-                ⚡ 90-Min Delivery Only
+                <ZapIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>90-Min Delivery Only</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setOnlyUnder1200(!onlyUnder1200)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   onlyUnder1200
                     ? "bg-rose-100 border-rose-300 text-rose-900 font-bold"
                     : "bg-white border-zinc-300 text-zinc-700 hover:border-zinc-400"
                 }`}
               >
-                💰 Under ₹1,199
+                <TagIcon className="w-3.5 h-3.5 text-rose-600" />
+                <span>Under ₹1,199</span>
               </button>
 
               {(only90Min || onlyUnder1200 || activeCategory !== "all") && (
@@ -520,7 +524,7 @@ function CombosContent() {
                   key={area}
                   className="bg-white border border-zinc-200/80 rounded-lg p-2.5 flex items-center gap-2 shadow-2xs"
                 >
-                  <span className="text-[#c8102e]">📍</span>
+                  <MapPinIcon className="w-4 h-4 text-[#c8102e] shrink-0" />
                   <span>{area}</span>
                 </div>
               ))}

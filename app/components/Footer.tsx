@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { HeartIcon } from "./StorefrontIcons";
 
 const DEFAULT_STORE_SETTINGS = {
   store_name: "MS Flowers & Cake",
@@ -18,7 +19,7 @@ const DEFAULT_STORE_SETTINGS = {
   facebook_url: "https://www.facebook.com/profile.php?id=61596205570248",
   instagram_url: "https://instagram.com/msflowers_kolkata",
   copyright_text: "© 2026 MS: Online Flowers and Cake Delivery in Kolkata. All rights reserved.",
-  handcrafted_text: "Handcrafted with ❤️ in Chingrighata, Salt Lake, Kolkata",
+  handcrafted_text: "Handcrafted in Chingrighata, Salt Lake, Kolkata",
 };
 
 const KOLKATA_DELIVERY_AREAS = [
@@ -699,8 +700,10 @@ export default function Footer() {
               </span>
             ))}
           </nav>
-          <p className="flex items-center justify-center gap-1">
-            <span>{settings.handcrafted_text}</span>
+          <p className="flex items-center justify-center gap-1.5 text-xs text-zinc-400">
+            <span>Handcrafted with</span>
+            <HeartIcon className="w-3.5 h-3.5 text-rose-500 fill-current inline" />
+            <span>in Chingrighata, Salt Lake, Kolkata</span>
           </p>
         </div>
       </div>

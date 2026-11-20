@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { BoxIcon, CartIcon } from "./AdminIcons";
+import { CheckIcon } from "@/app/components/StorefrontIcons";
 
 export interface DbOrderItem {
   sku?: string;
@@ -47,24 +48,52 @@ export interface DbOrder {
   updated_at: string;
 }
 
+function OrderProductThumbnail({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false);
+
+  if (!src || error) {
+    return (
+      <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+        <BoxIcon className="w-5 h-5 text-rose-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 overflow-hidden">
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover"
+        onError={() => setError(true)}
+      />
+    </div>
+  );
+}
+
 export function printOfficialPackingSlip(order: DbOrder) {
   if (typeof window === "undefined") return;
-  const win = window.open("", "_blank", "width=850,height=950");
+  const win = window.open("", "_blank", "width=880,height=1000");
   if (!win) return;
+
+  const logoUrl = `${window.location.origin}/ms-logo.jpg`;
 
   const itemsHtml = (order.items || [])
     .map(
       (it, idx) => `
-      <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;">
-          ${it.name}
-          <div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:2px;">
-            SKU: ${it.sku || `MS-ITM-0${idx + 1}`}
+      <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#fafafa'};">
+        <td style="padding:12px 14px;border-bottom:1px solid #e2e8f0;vertical-align:middle;">
+          <div style="font-weight:700;font-size:13px;color:#0f172a;">${it.name}</div>
+          <div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:3px;">
+            SKU: <strong style="color:#ea580c;">${it.sku || `MS-ITM-0${idx + 1}`}</strong>
+            ${it.weight ? ` &bull; Weight: <strong>${it.weight}</strong>` : ""}
           </div>
+          ${it.cakeMessage ? `<div style="font-size:11px;color:#9f1239;margin-top:2px;">Cake Piping: <em>"${it.cakeMessage}"</em></div>` : ""}
+          ${it.cardMessage ? `<div style="font-size:11px;color:#1e3a8a;margin-top:2px;">Card Note: <em>"${it.cardMessage}"</em></div>` : ""}
         </td>
-        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">&#8377;${it.price}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:700;">x${it.qty}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700;">&#8377;${it.price * it.qty}</td>
+        <td style="padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:center;font-size:13px;color:#334155;vertical-align:middle;">&#8377;${it.price}</td>
+        <td style="padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:800;font-size:13px;color:#0f172a;vertical-align:middle;">x${it.qty}</td>
+        <td style="padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:800;font-size:14px;color:#059669;vertical-align:middle;">&#8377;${it.price * it.qty}</td>
       </tr>`
     )
     .join("");
@@ -72,89 +101,408 @@ export function printOfficialPackingSlip(order: DbOrder) {
   win.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Packing Slip - ${order.order_number}</title>
+  <meta charset="utf-8" />
+  <title>Official Dispatch Slip - ${order.order_number}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 0; padding: 28px; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 18px; margin-bottom: 20px; }
-    .brand-title { font-size: 22px; font-weight: 800; color: #c8102e; letter-spacing: -0.5px; }
-    .brand-sub { font-size: 11px; color: #64748b; margin-top: 3px; }
-    .order-box { text-align: right; }
-    .order-id { font-size: 20px; font-weight: 900; color: #0f172a; font-family: monospace; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; font-size: 12px; line-height: 1.6; }
-    .card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
-    th { background: #f1f5f9; text-align: left; padding: 10px 12px; font-weight: 700; text-transform: uppercase; font-size: 10px; color: #475569; }
-    .totals { width: 280px; margin-left: auto; font-size: 12px; line-height: 2; margin-bottom: 24px; }
-    .total-row { display: flex; justify-content: space-between; }
-    .grand { font-size: 16px; font-weight: 900; color: #059669; border-top: 2px solid #e2e8f0; padding-top: 6px; margin-top: 4px; }
-    .footer { text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 11px; color: #64748b; }
+    @page {
+      size: A4 portrait;
+      margin: 8mm 12mm 8mm 12mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .slip-container {
+      min-height: calc(100vh - 16px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 20px;
+      position: relative;
+      background: transparent;
+    }
+    /* Logo Watermark in background */
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 440px;
+      height: 440px;
+      opacity: 0.055;
+      pointer-events: none;
+      z-index: -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+    }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logo {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #fecdd3;
+      box-shadow: 0 2px 8px rgba(200, 16, 46, 0.08);
+    }
+    .brand-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #c8102e;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      margin-top: 3px;
+    }
+    .brand-meta {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .order-box {
+      text-align: right;
+    }
+    .order-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+    .order-id {
+      font-size: 22px;
+      font-weight: 900;
+      color: #0f172a;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+    .order-meta {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .order-status-pill {
+      display: inline-block;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .card-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 6px;
+      letter-spacing: 0.6px;
+    }
+    .personalization-card {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 12px;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+    .personalization-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #9f1239;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 10px;
+      color: #475569;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .summary-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .instructions-box {
+      flex: 1;
+      background: #fefce8;
+      border: 1px dashed #fde047;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 11px;
+      color: #713f12;
+      line-height: 1.5;
+    }
+    .instructions-title {
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+      color: #854d0e;
+    }
+    .totals {
+      width: 300px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+    }
+    .grand {
+      font-size: 15px;
+      font-weight: 900;
+      color: #059669;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 6px;
+      margin-top: 4px;
+    }
+    .signatures-block {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+      margin-top: auto;
+      margin-bottom: 14px;
+    }
+    .sign-box {
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      background: #fafafa;
+    }
+    .sign-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .sign-line {
+      border-top: 1px solid #94a3b8;
+      font-size: 10px;
+      color: #64748b;
+      padding-top: 4px;
+    }
+    .footer {
+      text-align: center;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 12px;
+      font-size: 10px;
+      color: #64748b;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
+  <!-- Watermark Element -->
+  <div class="watermark">
+    <img src="${logoUrl}" alt="MS Flowers Watermark" />
+  </div>
+
+  <div class="slip-container">
     <div>
-      <div class="brand-title">MS Flowers &amp; Cakes</div>
-      <div class="brand-sub">Central Hub: Chingrighata, Salt Lake Bypass, Kolkata &bull; 90-Min Express Hub</div>
-    </div>
-    <div class="order-box">
-      <div class="order-id">${order.order_number}</div>
-      <div style="font-size:11px;color:#64748b;margin-top:2px;">Date: ${order.created_at ? order.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)}</div>
-      <div style="display:inline-block;background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:6px;font-weight:700;font-size:10px;margin-top:4px;">${order.status}</div>
-    </div>
-  </div>
+      <!-- Top Brand Header -->
+      <div class="header">
+        <div class="brand-section">
+          <img src="${logoUrl}" alt="MS Flowers &amp; Cakes Logo" class="brand-logo" />
+          <div>
+            <div class="brand-title">MS Flowers &amp; Cakes</div>
+            <div class="brand-sub">Kolkata Premier Floral &amp; Cake Boutique &bull; 90-Min Express Dispatch</div>
+            <div class="brand-meta">Central Hub: Chingrighata, Salt Lake Bypass, Kolkata &bull; Helpline: +91 6295233296</div>
+          </div>
+        </div>
+        <div class="order-box">
+          <div class="order-badge">OFFICIAL DISPATCH SLIP</div>
+          <div class="order-id">${order.order_number}</div>
+          <div class="order-meta">Placed: ${order.created_at ? order.created_at.slice(0, 16).replace("T", " ") : new Date().toISOString().slice(0, 10)}</div>
+          <div class="order-status-pill">${order.status}</div>
+        </div>
+      </div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="card-title">Customer Information</div>
-      <div><strong>${order.customer_name}</strong></div>
-      <div>Phone: ${order.customer_phone}</div>
-      <div>Email: ${order.customer_email}</div>
-      ${order.recipient_name && order.recipient_name !== order.customer_name ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;">Recipient: <strong>${order.recipient_name}</strong> (${order.recipient_phone})</div>` : ""}
+      <!-- Customer & Delivery Info Grid -->
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Customer / Sender Information</div>
+          <div style="font-size:13px;"><strong>${order.customer_name}</strong></div>
+          <div>Mobile: <strong>${order.customer_phone}</strong></div>
+          <div>Email: ${order.customer_email}</div>
+          ${order.recipient_name && order.recipient_name !== order.customer_name ? `
+            <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1;">
+              Gift Recipient: <strong>${order.recipient_name}</strong> (${order.recipient_phone})
+            </div>
+          ` : ""}
+        </div>
+
+        <div class="card">
+          <div class="card-title">Delivery Location &amp; Time Slot</div>
+          <div style="font-size:13px;"><strong>${order.delivery_address}</strong></div>
+          <div>Area: <strong>${order.area || "Kolkata Central"}</strong> &bull; Pincode: <strong style="color:#c8102e;background:#ffe4e6;padding:1px 6px;border-radius:4px;">${order.pincode}</strong></div>
+          <div style="margin-top:6px;color:#c8102e;font-weight:800;">
+            Delivery Slot: ${order.slot_time_window || order.slot_type}
+          </div>
+          <div>Scheduled Date: <strong>${order.delivery_date || "Today"}</strong></div>
+        </div>
+      </div>
+
+      <!-- Personalization / Messages (if any) -->
+      ${order.cake_message || order.card_message ? `
+        <div class="personalization-card">
+          <div class="personalization-title">Celebration Personalization Instructions</div>
+          ${order.cake_message ? `<div>Cake Piping Text: <strong style="color:#9f1239;">"${order.cake_message}"</strong></div>` : ""}
+          ${order.card_message ? `<div>Greeting Card Note: <em>"${order.card_message}"</em></div>` : ""}
+        </div>
+      ` : ""}
+
+      <!-- Ordered Items Table -->
+      <table>
+        <thead>
+          <tr>
+            <th>Product Details &amp; SKU</th>
+            <th style="text-align:center;">Unit Price</th>
+            <th style="text-align:center;">Qty</th>
+            <th style="text-align:right;">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+
+      <!-- Instructions & Billing Summary -->
+      <div class="summary-section">
+        <div class="instructions-box">
+          <div class="instructions-title">Dispatch &amp; Handling Protocol</div>
+          <div>&bull; Fresh florals must be maintained upright in water stem vials.</div>
+          <div>&bull; Handcrafted celebration cake: store below 18&deg;C, do not tilt or stack.</div>
+          <div>&bull; Rider must verify recipient contact (+91 ${order.recipient_phone || order.customer_phone}) before arrival.</div>
+          ${order.delivery_note ? `<div style="margin-top:4px;font-weight:700;color:#991b1b;">Note: "${order.delivery_note}"</div>` : ""}
+        </div>
+
+        <div class="totals">
+          <div class="total-row"><span>Items Subtotal:</span><span>&#8377;${order.items_subtotal}</span></div>
+          ${order.coupon_discount > 0 ? `<div class="total-row" style="color:#059669;"><span>Coupon Discount (${order.coupon_code || "OFFER"}):</span><span>-&#8377;${order.coupon_discount}</span></div>` : ""}
+          <div class="total-row"><span>Delivery Slot Fee:</span><span>${order.slot_fee === 0 ? '<strong style="color:#059669;">FREE</strong>' : `&#8377;${order.slot_fee}`}</span></div>
+          <div class="total-row grand">
+            <span>Total Payable:</span>
+            <span>&#8377;${order.grand_total}</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;text-align:right;margin-top:2px;">
+            Payment: <strong>${order.payment_method}</strong> (${order.payment_status || "Pending"})
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-title">Delivery &amp; Slot Address</div>
-      <div><strong>${order.delivery_address}</strong></div>
-      <div>Area: ${order.area || "Kolkata Hub"} &bull; Pincode: <strong>${order.pincode}</strong></div>
-      <div style="margin-top:6px;color:#c8102e;font-weight:700;">Slot: ${order.slot_time_window || order.slot_type}</div>
+
+    <!-- Official Signatures Block -->
+    <div>
+      <div class="signatures-block">
+        <div class="sign-box">
+          <div class="sign-title">Hub Dispatcher</div>
+          <div class="sign-line">Quality Checked &amp; Sealed</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-title">Delivery Executive</div>
+          <div class="sign-line">Signature &amp; Dispatch Time</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-title">Recipient Acknowledgment</div>
+          <div class="sign-line">Signature / Received in Good Condition</div>
+        </div>
+      </div>
+
+      <!-- Official Footer -->
+      <div class="footer">
+        Thank you for choosing <strong>MS Flowers &amp; Cakes Kolkata</strong> &bull; Authorized Dispatch Slip &bull; Central Hub: Chingrighata, Salt Lake Bypass, Kolkata &bull; Helpline: +91 6295233296 &bull; support@msflowers.in
+      </div>
     </div>
-  </div>
-
-  ${order.cake_message || order.card_message ? `
-    <div class="card" style="margin-bottom:20px;background:#fff1f2;border-color:#fecdd3;">
-      <div class="card-title" style="color:#9f1239;">Celebration Personalization</div>
-      ${order.cake_message ? `<div>Cake Message Piping: <em>"${order.cake_message}"</em></div>` : ""}
-      ${order.card_message ? `<div>Greeting Card Note: <em>"${order.card_message}"</em></div>` : ""}
-    </div>
-  ` : ""}
-
-  <table>
-    <thead>
-      <tr>
-        <th>Product &amp; SKU</th>
-        <th style="text-align:center;">Price</th>
-        <th style="text-align:center;">Qty</th>
-        <th style="text-align:right;">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsHtml}
-    </tbody>
-  </table>
-
-  <div class="totals">
-    <div class="total-row"><span>Items Subtotal:</span><span>&#8377;${order.items_subtotal}</span></div>
-    ${order.coupon_discount > 0 ? `<div class="total-row" style="color:#059669;"><span>Coupon (${order.coupon_code || "DISCOUNT"}):</span><span>-&#8377;${order.coupon_discount}</span></div>` : ""}
-    <div class="total-row"><span>Delivery Slot Fee:</span><span>${order.slot_fee === 0 ? "FREE" : `&#8377;${order.slot_fee}`}</span></div>
-    <div class="total-row grand"><span>Total Payable:</span><span>&#8377;${order.grand_total} (${order.payment_method})</span></div>
-  </div>
-
-  <div class="footer">
-    Thank you for choosing MS Flowers &amp; Cakes Kolkata &bull; Authorized Dispatch Slip &bull; Support: +91 9830012345
   </div>
 
   <script>
-    window.onload = function() { window.focus(); setTimeout(function() { window.print(); }, 200); };
+    window.onload = function() {
+      window.focus();
+      setTimeout(function() {
+        window.print();
+      }, 250);
+    };
   </script>
 </body>
 </html>`);
@@ -276,7 +624,6 @@ export function OrdersView({
               onClick={() => setSelectedOrder(null)}
               className="inline-flex items-center gap-1.5 px-3 py-1.8 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-xs font-bold text-rose-700 transition-colors cursor-pointer"
             >
-              <span>&larr;</span>
               <span>Back to Orders</span>
             </button>
             <span className="text-xs font-bold text-gray-500">
@@ -377,13 +724,7 @@ export function OrdersView({
                       <tr key={idx} className="hover:bg-rose-50/20 transition-colors">
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 overflow-hidden">
-                              {item.image ? (
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <BoxIcon className="w-5 h-5 text-rose-400" />
-                              )}
-                            </div>
+                            <OrderProductThumbnail src={item.image} alt={item.name} />
                             <div>
                               <div className="font-bold text-gray-900 text-xs sm:text-sm">{item.name}</div>
                               <div className="text-[11px] text-gray-400">Item ID: itm-0{idx + 1}</div>
@@ -449,7 +790,7 @@ export function OrdersView({
                               isDone ? "bg-emerald-600 text-white" : "bg-gray-300 text-gray-700"
                             }`}
                           >
-                            {isDone ? "✓" : sIdx + 1}
+                            {isDone ? <CheckIcon className="w-3 h-3 text-white" /> : sIdx + 1}
                           </span>
                           <span
                             className={`text-xs font-bold ${

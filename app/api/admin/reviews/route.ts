@@ -22,7 +22,7 @@ export async function GET() {
         ? Number(
             (items.reduce((acc, r) => acc + (r.rating || 5), 0) / totalReviews).toFixed(1)
           )
-        : 5.0;
+        : 0.0;
 
     return NextResponse.json({
       success: true,
@@ -65,6 +65,29 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Live sync to products table: recalculate avg rating and reviews_count for this product
+    if (data?.product_id) {
+      const { data: approvedReviews } = await supabaseAdmin
+        .from("reviews")
+        .select("rating")
+        .eq("product_id", data.product_id)
+        .eq("status", "approved");
+
+      const approvedCount = approvedReviews?.length || 0;
+      const newAvg =
+        approvedCount > 0
+          ? Number((approvedReviews!.reduce((sum, r) => sum + (r.rating || 5), 0) / approvedCount).toFixed(1))
+          : 0.0;
+
+      await supabaseAdmin
+        .from("products")
+        .update({
+          rating: newAvg,
+          reviews_count: approvedCount,
+        })
+        .or(`id.eq.${data.product_id},slug.eq.${data.product_id}`);
+    }
+
     return NextResponse.json({ success: true, review: data });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -80,10 +103,38 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Review ID is required" }, { status: 400 });
     }
 
+    const { data: rev } = await supabaseAdmin
+      .from("reviews")
+      .select("product_id")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin.from("reviews").delete().eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (rev?.product_id) {
+      const { data: approvedReviews } = await supabaseAdmin
+        .from("reviews")
+        .select("rating")
+        .eq("product_id", rev.product_id)
+        .eq("status", "approved");
+
+      const approvedCount = approvedReviews?.length || 0;
+      const newAvg =
+        approvedCount > 0
+          ? Number((approvedReviews!.reduce((sum, r) => sum + (r.rating || 5), 0) / approvedCount).toFixed(1))
+          : 0.0;
+
+      await supabaseAdmin
+        .from("products")
+        .update({
+          rating: newAvg,
+          reviews_count: approvedCount,
+        })
+        .or(`id.eq.${rev.product_id},slug.eq.${rev.product_id}`);
     }
 
     return NextResponse.json({ success: true, message: "Review deleted" });

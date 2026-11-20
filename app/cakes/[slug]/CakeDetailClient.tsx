@@ -7,6 +7,7 @@ import { useState } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ProductReviewsSection from "../../components/ProductReviewsSection";
+import { SparklesIcon, RoseIcon, MailIcon, CheckCircleIcon } from "../../components/StorefrontIcons";
 import { Product } from "../../data/types";
 
 import { useProductReviews } from "../../data/reviewsState";
@@ -61,7 +62,7 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
   const router = useRouter();
   const { addToCart, isProductWishlisted, toggleWishlist } = useShopState();
   const isWishlisted = isProductWishlisted(product.id);
-  const { totalCount } = useProductReviews(product);
+  const { totalCount, avgRating } = useProductReviews(product);
 
   // Addons state
   const [addons, setAddons] = useState({
@@ -414,13 +415,13 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-950 border border-amber-200/80 text-xs font-extrabold px-2.5 py-0.5 rounded-lg shadow-2xs">
-                  <svg className="w-3.5 h-3.5 fill-amber-500 text-amber-500" viewBox="0 0 20 20">
+                  <svg className={`w-3.5 h-3.5 ${totalCount > 0 ? "fill-amber-500 text-amber-500" : "fill-zinc-300 text-zinc-300"}`} viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
-                  {product.rating}
+                  {totalCount > 0 ? avgRating.toFixed(1) : "New"}
                 </span>
                 <span className="text-xs text-zinc-700 font-bold">
-                  ({totalCount} verified customer reviews)
+                  {totalCount > 0 ? `(${totalCount} verified customer reviews)` : "(No reviews yet)"}
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight leading-snug">
@@ -663,7 +664,7 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
                 <label className="flex items-center justify-between p-3 rounded-xl border border-zinc-200/90 hover:border-zinc-300 bg-white cursor-pointer transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 font-bold text-xs">
-                      ✨
+                      <SparklesIcon className="w-5 h-5 text-amber-500 fill-amber-500" />
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm font-bold text-zinc-950">Musical Sparkler Birthday Candle</p>
@@ -682,7 +683,7 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
                 <label className="flex items-center justify-between p-3 rounded-xl border border-zinc-200/90 hover:border-zinc-300 bg-white cursor-pointer transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-[#c8102e] font-bold text-xs">
-                      🌹
+                      <RoseIcon className="w-5 h-5 text-rose-600" />
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm font-bold text-zinc-950">Single Dutch Long-Stem Red Rose</p>
@@ -701,7 +702,7 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
                 <label className="flex items-center justify-between p-3 rounded-xl border border-rose-200 bg-rose-50/30 cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-rose-100 text-[#c8102e] flex items-center justify-center text-xs">
-                      💌
+                      <MailIcon className="w-5 h-5 text-[#c8102e]" />
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm font-bold text-zinc-950">Custom Greeting Card</p>
@@ -910,7 +911,7 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
                 <div className="space-y-2.5">
                   {product.deliveryInfo?.map((info, idx) => (
                     <div key={idx} className="p-3.5 sm:p-4 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
-                      <span className="text-emerald-700 font-bold shrink-0">✓</span>
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                       <p className="text-xs sm:text-sm text-emerald-950 font-medium leading-relaxed">{info}</p>
                     </div>
                   ))}
@@ -944,7 +945,7 @@ export default function CakeDetailClient({ product, related = [] }: CakeDetailCl
                 href="/cakes"
                 className="text-xs sm:text-sm font-bold text-[#c8102e] hover:underline whitespace-nowrap shrink-0"
               >
-                View All Cakes →
+                View All Cakes
               </Link>
             </div>
 

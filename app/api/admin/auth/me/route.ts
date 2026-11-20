@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     }
 
     const payload = verifyJwt(token);
-    if (!payload || (payload.role !== "admin" && payload.email !== "admin@msflowers.in")) {
+    if (!payload || payload.role !== "admin") {
       return NextResponse.json({ authenticated: false, admin: null, error: "Invalid or expired admin token" }, { status: 200 });
     }
 

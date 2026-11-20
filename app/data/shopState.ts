@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { Product } from "./types";
@@ -28,7 +28,7 @@ export interface ConfirmedOrder {
   orderId: string;
   placedAt: string;
   status: "Order Confirmed";
-  paymentMethod: "Cash on Delivery (COD)";
+  paymentMethod: "Cash on Delivery (COD)" | "Online (Razorpay)";
   items: CartItem[];
   deliveryDetails: {
     recipientName: string;

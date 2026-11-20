@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+import { ShoppingBagIcon, CheckCircleIcon, AlertTriangleIcon, CloseIcon } from "../components/StorefrontIcons";
 import { getCustomerSession } from "../lib/customerAuth";
 import {
   ConfirmedOrder,
@@ -164,6 +165,18 @@ function formatReadableDate(date: Date) {
   });
 }
 
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    if ((window as any).Razorpay) return resolve(true);
+    const s = document.createElement("script");
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const {
@@ -256,6 +269,10 @@ export default function CheckoutPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Payment state
+  const [paymentChoice, setPaymentChoice] = useState<"cod" | "online">("online");
+  const [isPaying, setIsPaying] = useState(false);
 
   // Form Error State
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -360,7 +377,7 @@ export default function CheckoutPage() {
     setCouponFeedback(null);
   }
 
-  function handleSubmitOrder(e: React.FormEvent) {
+  async function handleSubmitOrder(e: React.FormEvent) {
     e.preventDefault();
     const errors: string[] = [];
 
@@ -432,7 +449,7 @@ export default function CheckoutPage() {
       orderId,
       placedAt,
       status: "Order Confirmed",
-      paymentMethod: "Cash on Delivery (COD)",
+      paymentMethod: paymentChoice === "online" ? "Online (Razorpay)" : "Cash on Delivery (COD)",
       items: cart,
       deliveryDetails: {
         recipientName: recipientName.trim(),
@@ -470,13 +487,21 @@ export default function CheckoutPage() {
     };
 
     const customer = getCustomerSession();
-    // Persist order to database so it is live in Admin Orders & Customer My Orders
-    try {
-      fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+
+    const buildOrderBody = (payment?: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+    }) => {
+      const deliveryIso =
+        dateChoice === "today"
+          ? new Date().toISOString().split("T")[0]
+          : dateChoice === "tomorrow"
+          ? new Date(Date.now() + 86400000).toISOString().split("T")[0]
+          : customDate || new Date().toISOString().split("T")[0];
+      return {
           order_number: orderId,
+          orderId,
           customer_name: isGift && senderName.trim() ? senderName.trim() : (customer?.name || recipientName.trim()),
           customer_email: customer?.email || "customer@msflowers.in",
           customer_phone: isGift && senderPhone ? senderPhone : (customer?.phone || cleanRecipientPhone),
@@ -488,13 +513,18 @@ export default function CheckoutPage() {
           slot_type: effectiveSlotType,
           slot_time_window: slotTimeWindow,
           delivery_date: getDeliveryDateLabel(),
+          delivery_date_iso: deliveryIso,
           items: cart.map((item) => ({
             id: item.product.id,
             name: item.product.name,
             sku: (item.product as any).sku || `MS-${item.product.id.slice(0, 6).toUpperCase()}`,
             price: item.unitBasePrice,
             quantity: item.quantity,
+            qty: item.quantity,
             image: item.product.images?.[0] || "",
+            weight: (item as any).selectedWeight || (item as any).weight || undefined,
+            cakeMessage: effectiveCakeMessage.trim() || undefined,
+            cardMessage: effectiveCardMessage.trim() || undefined,
           })),
           item_count: cart.reduce((acc, it) => acc + it.quantity, 0),
           items_subtotal: itemsSubtotal,
@@ -502,16 +532,101 @@ export default function CheckoutPage() {
           coupon_discount: couponDiscount,
           slot_fee: slotFee,
           grand_total: grandTotal,
-          payment_method: "Cash on Delivery (COD)",
+          total_amount: grandTotal,
+          payment_method: payment ? "Online (Razorpay)" : "Cash on Delivery (COD)",
+          ...(payment || {}),
           cake_message: effectiveCakeMessage.trim() || null,
           card_message: effectiveCardMessage.trim() || null,
           delivery_note: deliveryNote.trim() || null,
-        }),
-      }).catch((err) => console.warn("Background order sync notice:", err));
-    } catch {}
+      };
+    };
+
+    const persistAndFinish = async (payment?: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+    }) => {
+    // Persist order to Supabase database so it is live in Admin Orders & Customer My Orders
+    try {
+      const orderRes = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildOrderBody(payment)),
+      });
+      if (!orderRes.ok && orderRes.status !== 409 && payment) {
+        const errData = await orderRes.json().catch(() => ({}));
+        console.error("Paid order save failed:", errData);
+        setFormErrors([
+          `Payment received (ID: ${payment.razorpay_payment_id}) but we could not save your order. Please contact us with this payment ID.`,
+        ]);
+        setIsPaying(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    } catch (e) {
+      console.warn("Order placement warning:", e);
+    }
 
     placeOrder(confirmedOrder);
     router.push("/order-confirmation");
+    };
+
+    if (paymentChoice === "cod") {
+      await persistAndFinish();
+      return;
+    }
+
+    // ---- Online payment via Razorpay ----
+    setIsPaying(true);
+    try {
+      const ok = await loadRazorpayScript();
+      if (!ok) throw new Error("Could not load payment gateway. Check your internet and retry.");
+
+      const createRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: grandTotal, receipt: orderId.replace("#", ""), order: buildOrderBody() }),
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok || !createData.razorpayOrderId) {
+        throw new Error(createData.error || "Could not start payment.");
+      }
+
+      const rzp = new (window as any).Razorpay({
+        key: createData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: createData.amount,
+        currency: createData.currency,
+        name: "MS Flowers",
+        description: `Order ${orderId}`,
+        order_id: createData.razorpayOrderId,
+        prefill: {
+          name: customer?.name || recipientName.trim(),
+          email: customer?.email || undefined,
+          contact: (customer?.phone || cleanRecipientPhone || "").replace(/\D/g, "").slice(-10),
+        },
+        theme: { color: "#c8102e" },
+        modal: {
+          ondismiss: () => setIsPaying(false),
+        },
+        handler: async (resp: any) => {
+          await persistAndFinish({
+            razorpay_order_id: resp.razorpay_order_id,
+            razorpay_payment_id: resp.razorpay_payment_id,
+            razorpay_signature: resp.razorpay_signature,
+          });
+        },
+      });
+      rzp.on("payment.failed", (resp: any) => {
+        setFormErrors([resp?.error?.description || "Payment failed. Please try again or choose COD."]);
+        setIsPaying(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      rzp.open();
+    } catch (err: any) {
+      setFormErrors([err?.message || "Payment could not be started."]);
+      setIsPaying(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   return (
@@ -534,8 +649,8 @@ export default function CheckoutPage() {
           </div>
         ) : cart.length === 0 ? (
           <div className="bg-white rounded-3xl border border-zinc-200/90 shadow-xs p-8 sm:p-14 text-center max-w-2xl mx-auto my-6">
-            <div className="w-16 h-16 rounded-full bg-rose-50 text-[#c8102e] flex items-center justify-center text-2xl mx-auto mb-4">
-              🛒
+            <div className="w-16 h-16 rounded-full bg-rose-50 text-[#c8102e] flex items-center justify-center mx-auto mb-4">
+              <ShoppingBagIcon className="w-8 h-8 text-[#c8102e]" />
             </div>
             <h1 className="text-2xl font-black text-zinc-950">Your Cart is Empty</h1>
             <p className="text-sm text-zinc-600 mt-2 max-w-md mx-auto">
@@ -731,13 +846,13 @@ export default function CheckoutPage() {
                       {effectivePincode.length === 6 && (
                         isPincodeServiceable ? (
                           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-2 rounded-xl">
-                            <span className="text-emerald-600 font-bold">✓</span>
+                            <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span>Express &amp; Same-Day Flower/Cake Delivery Available for Kolkata Hub <b>{effectivePincode}</b></span>
                           </div>
                         ) : (
                           <div className="p-3 rounded-xl border-l-4 border-l-red-600 bg-red-50/90 border border-red-200 shadow-xs">
                             <div className="flex items-start gap-2.5">
-                              <span className="text-red-600 font-bold text-sm leading-none mt-0.5">⚠️</span>
+                              <AlertTriangleIcon className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                               <div className="space-y-0.5">
                                 <p className="text-xs font-bold text-red-700">
                                   Delivery is not available to pincode {effectivePincode}
@@ -1098,89 +1213,59 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="space-y-3">
-                    {/* Active COD Card */}
-                    <label className="flex items-start justify-between gap-3 p-4 rounded-2xl border-2 border-[#c8102e] bg-rose-50/40 cursor-pointer">
+                    {/* Online Payment (Razorpay) */}
+                    <label
+                      className={`flex items-start justify-between gap-3 p-4 rounded-2xl border-2 cursor-pointer ${
+                        paymentChoice === "online" ? "border-[#c8102e] bg-rose-50/40" : "border-zinc-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="online"
+                          checked={paymentChoice === "online"}
+                          onChange={() => setPaymentChoice("online")}
+                          className="mt-1 w-4 h-4 accent-[#c8102e]"
+                        />
+                        <div>
+                          <span className="text-sm font-extrabold text-zinc-950 block">
+                            Pay Online (UPI / Cards / NetBanking / Wallets)
+                          </span>
+                          <p className="text-xs text-zinc-600 font-medium mt-1">
+                            Secure payment via Razorpay – Google Pay, PhonePe, Paytm, Visa, Mastercard, RuPay &amp; more.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-black text-zinc-950 shrink-0">₹{grandTotal}</span>
+                    </label>
+
+                    {/* COD */}
+                    <label
+                      className={`flex items-start justify-between gap-3 p-4 rounded-2xl border-2 cursor-pointer ${
+                        paymentChoice === "cod" ? "border-[#c8102e] bg-rose-50/40" : "border-zinc-200 bg-white"
+                      }`}
+                    >
                       <div className="flex items-start gap-3">
                         <input
                           type="radio"
                           name="paymentMethod"
                           value="cod"
-                          checked
-                          readOnly
+                          checked={paymentChoice === "cod"}
+                          onChange={() => setPaymentChoice("cod")}
                           className="mt-1 w-4 h-4 accent-[#c8102e]"
                         />
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-extrabold text-zinc-950">
-                              Cash on Delivery (COD)
-                            </span>
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                              Available
-                            </span>
-                          </div>
+                          <span className="text-sm font-extrabold text-zinc-950 block">
+                            Cash on Delivery (COD)
+                          </span>
                           <p className="text-xs text-zinc-600 font-medium mt-1">
                             Pay cash at your doorstep when your flowers or cake arrives.
                           </p>
                         </div>
                       </div>
-                      <span className="text-sm font-black text-zinc-950 shrink-0">
-                        ₹{grandTotal}
-                      </span>
+                      <span className="text-sm font-black text-zinc-950 shrink-0">₹{grandTotal}</span>
                     </label>
-
-                    {/* Disabled UPI Option */}
-                    <div
-                      aria-disabled="true"
-                      className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 opacity-60 cursor-not-allowed select-none"
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="upi"
-                          disabled
-                          className="w-4 h-4"
-                        />
-                        <div>
-                          <span className="text-sm font-bold text-zinc-800 block">
-                            UPI (Google Pay, PhonePe, Paytm)
-                          </span>
-                          <span className="text-xs text-zinc-500">
-                            Instant scan &amp; pay via any UPI app
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full shrink-0">
-                        Coming Soon
-                      </span>
-                    </div>
-
-                    {/* Disabled Cards & NetBanking Option */}
-                    <div
-                      aria-disabled="true"
-                      className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 opacity-60 cursor-not-allowed select-none"
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="card"
-                          disabled
-                          className="w-4 h-4"
-                        />
-                        <div>
-                          <span className="text-sm font-bold text-zinc-800 block">
-                            Credit / Debit Cards &amp; NetBanking
-                          </span>
-                          <span className="text-xs text-zinc-500">
-                            Visa, Mastercard, RuPay &amp; major Indian banks
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full shrink-0">
-                        Coming Soon
-                      </span>
-                    </div>
                   </div>
                 </section>
               </div>
@@ -1222,9 +1307,9 @@ export default function CheckoutPage() {
                                 type="button"
                                 onClick={() => removeFromCart(item.cartItemId)}
                                 aria-label={`Remove ${item.product.name}`}
-                                className="text-zinc-400 hover:text-[#c8102e] text-xs cursor-pointer shrink-0"
+                                className="text-zinc-400 hover:text-[#c8102e] text-xs cursor-pointer shrink-0 p-1 rounded-md hover:bg-zinc-100 transition-colors"
                               >
-                                ✕
+                                <CloseIcon className="w-3.5 h-3.5" />
                               </button>
                             </div>
 
@@ -1386,7 +1471,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-3 border-t border-zinc-200 text-base font-black text-zinc-950">
-                      <span>Total Payable (COD)</span>
+                      <span>{paymentChoice === "online" ? "Total Payable" : "Total Payable (COD)"}</span>
                       <span>₹{grandTotal}</span>
                     </div>
                   </div>
@@ -1394,9 +1479,14 @@ export default function CheckoutPage() {
                   {/* Place Order CTA */}
                   <button
                     type="submit"
-                    className="w-full py-3.5 px-5 rounded-xl bg-[#c8102e] hover:bg-[#a60c25] text-white font-extrabold text-sm sm:text-base shadow-md transition-all cursor-pointer"
+                    disabled={isPaying}
+                    className="w-full py-3.5 px-5 rounded-xl bg-[#c8102e] hover:bg-[#a60c25] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-sm sm:text-base shadow-md transition-all cursor-pointer"
                   >
-                    Place Order (Cash on Delivery) • ₹{grandTotal}
+                    {isPaying
+                      ? "Processing..."
+                      : paymentChoice === "online"
+                      ? `Pay Securely • ₹${grandTotal}`
+                      : `Place Order (Cash on Delivery) • ₹${grandTotal}`}
                   </button>
 
                   <p className="text-[11px] text-center text-zinc-500 font-medium">
@@ -1414,3 +1504,7 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+
+
+

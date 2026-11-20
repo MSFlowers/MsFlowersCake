@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
+import { SparklesIcon } from "./StorefrontIcons";
 
 interface HeroSlide {
   id: string;
@@ -327,8 +328,8 @@ export default function HeroCarousel() {
           <div className="absolute inset-0 bg-white/45 backdrop-blur-[1px] pointer-events-none" />
 
           <div className="relative z-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
-            <span className="text-rose-500 text-lg 2xl:text-xl hidden sm:inline drop-shadow-xs" aria-hidden="true">
-              ✿
+            <span className="hidden sm:inline-flex items-center" aria-hidden="true">
+              <SparklesIcon className="w-5 h-5 text-rose-500 fill-rose-500 drop-shadow-xs" />
             </span>
             <p className="text-sm sm:text-lg 2xl:text-xl leading-snug">
               <span className="text-[#c8102e] font-black text-base sm:text-xl 2xl:text-2xl mr-2 tracking-tight drop-shadow-xs">
@@ -338,8 +339,8 @@ export default function HeroCarousel() {
                 You focus on the emotions, We take care of the execution!
               </span>
             </p>
-            <span className="text-rose-500 text-lg 2xl:text-xl hidden sm:inline drop-shadow-xs" aria-hidden="true">
-              ✿
+            <span className="hidden sm:inline-flex items-center" aria-hidden="true">
+              <SparklesIcon className="w-5 h-5 text-rose-500 fill-rose-500 drop-shadow-xs" />
             </span>
           </div>
         </div>

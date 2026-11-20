@@ -32,6 +32,16 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [needsVerify, setNeedsVerify] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("verified")) {
+      setSuccessMsg("Email verified successfully! You can now sign in.");
+    } else if (searchParams.get("verify_error")) {
+      setErrorMsg("Verification link is invalid or expired. Enter your email and request a new one.");
+      setNeedsVerify(true);
+    }
+  }, [searchParams]);
 
   // Existing auth user state
   const [currentUser, setCurrentUser] = useState<CustomerUser | null>(null);
@@ -86,6 +96,7 @@ function LoginContent() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "EMAIL_NOT_VERIFIED") setNeedsVerify(true);
         throw new Error(data.error || "Failed to sign in");
       }
 
@@ -148,14 +159,40 @@ function LoginContent() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      saveCustomerSession(data.user, data.token);
-      setSuccessMsg("Account created successfully! Welcome to MS Flowers.");
-
-      setTimeout(() => {
-        router.push(redirectUrl);
-      }, 700);
+      setSuccessMsg(
+        data.message ||
+          "Account created! Please check your email and click the verification link."
+      );
+      setNeedsVerify(true);
+      setPassword("");
+      setConfirmPassword("");
+      setActiveTab("signin");
     } catch (err: any) {
       setErrorMsg(err.message || "Unable to create account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail.includes("@")) {
+      setErrorMsg("Enter your email above first.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not resend email");
+      setSuccessMsg("Verification email sent. Please check your inbox (and spam).");
+    } catch (err: any) {
+      setErrorMsg(err.message);
     } finally {
       setLoading(false);
     }
@@ -183,7 +220,6 @@ function LoginContent() {
             href="/"
             className="inline-flex items-center gap-1.5 hover:text-[#c8102e] transition-colors"
           >
-            <span>&larr;</span>
             <span>Back to Flowers &amp; Cakes</span>
           </Link>
           <span className="rounded-full bg-rose-100/90 text-rose-800 px-2.5 py-0.5 text-[11px] font-semibold">
@@ -305,6 +341,17 @@ function LoginContent() {
                   <span className="text-sm leading-none font-bold">&#10003;</span>
                   <span>{successMsg}</span>
                 </div>
+              )}
+
+              {needsVerify && activeTab === "signin" && (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={loading}
+                  className="mb-3 w-full text-xs font-semibold text-[#c8102e] underline cursor-pointer disabled:opacity-60"
+                >
+                  Resend verification email
+                </button>
               )}
 
               {/* 1. Sign In Form */}

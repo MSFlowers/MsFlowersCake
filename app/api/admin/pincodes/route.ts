@@ -1,35 +1,22 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/lib/supabase";
+import {
+  getAllPincodes,
+  addPincode,
+  updatePincodeStatus,
+  removePincode,
+} from "@/app/lib/pincodesStore";
 
 export async function GET() {
   try {
-    const { data: pincodes, error } = await supabaseAdmin
-      .from("pincodes")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message, pincodes: [], stats: null },
-        { status: 500 }
-      );
-    }
-
-    const items = pincodes || [];
-    const activeCount = items.filter((p) => p.is_active).length;
-
+    const { pincodes, stats } = await getAllPincodes();
     return NextResponse.json({
       success: true,
-      pincodes: items,
-      stats: {
-        total: items.length,
-        active: activeCount,
-        paused: items.length - activeCount,
-      },
+      pincodes,
+      stats,
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err.message, pincodes: [], stats: null },
+      { error: err.message || "Failed to load pincodes", pincodes: [], stats: null },
       { status: 500 }
     );
   }
@@ -43,29 +30,24 @@ export async function POST(req: Request) {
     const trimmedPincode = (pincode || "").trim();
     if (!trimmedPincode || trimmedPincode.length !== 6) {
       return NextResponse.json(
-        { error: "A valid 6-digit Kolkata pincode is required." },
+        { error: "A valid 6-digit pincode is required." },
         { status: 400 }
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("pincodes")
-      .insert({
-        pincode: trimmedPincode,
-        area_name: (area_name || "").trim() || "Kolkata Delivery Hub",
-        delivery_time: delivery_time || "45–90 Mins",
-        is_active: is_active !== false,
-      })
-      .select()
-      .single();
+    const savedRecord = await addPincode({
+      pincode: trimmedPincode,
+      area_name: (area_name || "").trim() || "Kolkata Delivery Hub",
+      delivery_time: delivery_time || "45–60 Mins Express",
+      is_active: is_active !== false,
+    });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, pincode: data });
+    return NextResponse.json({ success: true, pincode: savedRecord });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Failed to save pincode" },
+      { status: 500 }
+    );
   }
 }
 
@@ -78,20 +60,13 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Pincode ID is required" }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("pincodes")
-      .update({ is_active, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, pincode: data });
+    await updatePincodeStatus(id, Boolean(is_active));
+    return NextResponse.json({ success: true });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Failed to update pincode status" },
+      { status: 500 }
+    );
   }
 }
 
@@ -101,16 +76,15 @@ export async function DELETE(req: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ error: "ID is required" }, { status: 400 });
+      return NextResponse.json({ error: "Pincode ID is required" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from("pincodes").delete().eq("id", id);
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    await removePincode(id);
     return NextResponse.json({ success: true, message: "Pincode deleted" });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Failed to delete pincode" },
+      { status: 500 }
+    );
   }
 }

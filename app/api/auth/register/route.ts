@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase";
-import { hashPassword, signJwt } from "@/app/lib/jwt";
+import { hashPassword } from "@/app/lib/jwt";
+import { sendVerificationEmail } from "@/app/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -73,37 +74,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Generate standard JWT
-    const token = signJwt({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      phone: newUser.phone,
-      role: newUser.role,
-    });
+    // 4. Send verification email (no auto-login until verified)
+    try {
+      await sendVerificationEmail(newUser, req);
+    } catch (mailErr: any) {
+      console.error("Verification mail failed:", mailErr);
+      return NextResponse.json({
+        success: true,
+        verificationRequired: true,
+        emailSent: false,
+        message:
+          "Account created, but we couldn't send the verification email. Please use 'Resend verification email' on the Sign In tab.",
+      });
+    }
 
-    // 5. Create response & set cookie
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        phone: newUser.phone,
-        role: newUser.role,
-      },
-      token,
+      verificationRequired: true,
+      emailSent: true,
+      message: "Account created! Please check your email and click the verification link.",
     });
-
-    response.cookies.set("ms_customer_jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 3600, // 7 days
-      path: "/",
-    });
-
-    return response;
   } catch (err: any) {
     console.error("Register exception:", err);
     return NextResponse.json(

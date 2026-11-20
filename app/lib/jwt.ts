@@ -1,9 +1,12 @@
 import crypto from "crypto";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  process.env.SUPABASE_Secret_key ||
-  "msflowers_jwt_secret_key_2026_super_secure";
+function getJwtSecret(): string {
+  const s = process.env.JWT_SECRET;
+  if (!s || s.length < 16) {
+    throw new Error("JWT_SECRET env var is missing or too short (min 16 chars).");
+  }
+  return s;
+}
 
 export interface JwtUserPayload {
   id: string;
@@ -34,7 +37,7 @@ export function signJwt(
   const encodedPayload = Buffer.from(JSON.stringify(fullPayload)).toString("base64url");
 
   const signature = crypto
-    .createHmac("sha256", JWT_SECRET)
+    .createHmac("sha256", getJwtSecret())
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest("base64url");
 
@@ -54,11 +57,13 @@ export function verifyJwt(token: string): JwtUserPayload | null {
     const [encodedHeader, encodedPayload, signature] = parts;
 
     const expectedSignature = crypto
-      .createHmac("sha256", JWT_SECRET)
+      .createHmac("sha256", getJwtSecret())
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest("base64url");
 
-    if (signature !== expectedSignature) {
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSignature);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       return null;
     }
 

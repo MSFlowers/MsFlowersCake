@@ -6,6 +6,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId");
+    const productSlug = searchParams.get("productSlug");
 
     let query = supabase
       .from("reviews")
@@ -13,8 +14,12 @@ export async function GET(req: Request) {
       .eq("status", "approved")
       .order("created_at", { ascending: false });
 
-    if (productId) {
+    if (productId && productSlug) {
+      query = query.or(`product_id.eq.${productId},product_id.eq.${productSlug}`);
+    } else if (productId) {
       query = query.eq("product_id", productId);
+    } else if (productSlug) {
+      query = query.eq("product_id", productSlug);
     }
 
     const { data: reviews, error } = await query;
@@ -27,8 +32,8 @@ export async function GET(req: Request) {
     const count = items.length;
     const avgRating =
       count > 0
-        ? Number((items.reduce((sum, r) => sum + r.rating, 0) / count).toFixed(1))
-        : 5.0;
+        ? Number((items.reduce((sum, r) => sum + (r.rating || 5), 0) / count).toFixed(1))
+        : 0.0;
 
     return NextResponse.json({
       success: true,

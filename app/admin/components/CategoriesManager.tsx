@@ -7,6 +7,29 @@ import {
   getPageConfigFromCategories,
   PageConfig,
 } from "@/app/lib/db";
+import {
+  CakeIcon,
+  FlowerIcon,
+  GiftIcon,
+  SparklesIcon,
+  FileTextIcon,
+  CameraIcon,
+  CheckIcon,
+  TagIcon,
+  SearchIcon,
+  HeartIcon,
+  ShoppingBagIcon,
+  MenuIcon,
+  LaptopIcon,
+  SmartphoneIcon,
+  ExpandIcon,
+  CloseIcon,
+  PencilIcon,
+  LinkIcon,
+  PlusIcon,
+  HomeIcon,
+  RefreshIcon,
+} from "@/app/components/StorefrontIcons";
 
 /* ------------------------------------------------------------------ */
 /* Types & constants                                                   */
@@ -35,12 +58,13 @@ interface Cat {
   is_featured: boolean;
 }
 
-const SLUG_ICON: Record<string, string> = {
-  cakes: "🎂",
-  flowers: "💐",
-  combos: "🎁",
-  occasions: "🎉",
-};
+function renderCategoryIcon(slug: string, className = "w-4 h-4") {
+  if (slug === "cakes") return <CakeIcon className={className} />;
+  if (slug === "flowers") return <FlowerIcon className={className} />;
+  if (slug === "combos") return <GiftIcon className={className} />;
+  if (slug === "occasions") return <SparklesIcon className={className} />;
+  return <FileTextIcon className={className} />;
+}
 
 const SLUG_TAB_LABEL: Record<string, string> = {
   cakes: "Cakes Page",
@@ -231,7 +255,6 @@ export function CategoriesView(_props: { categories?: unknown }) {
         .filter((r) => r.slug !== "occasions")
         .map((r) => ({
           id: r.slug,
-          icon: SLUG_ICON[r.slug] || "📄",
           label: SLUG_TAB_LABEL[r.slug] || r.name,
           route: r.banner_image_url || `/${r.slug}`,
           root: r,
@@ -797,7 +820,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
           </div>
         )}
         <label className="absolute inset-0 bg-black/55 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center text-white text-xs cursor-pointer transition-opacity">
-          📷
+          <CameraIcon className="w-4 h-4 text-white" />
           <input
             type="file"
             accept="image/*"
@@ -1069,36 +1092,40 @@ export function CategoriesView(_props: { categories?: unknown }) {
                     : "bg-emerald-50 text-emerald-700 border border-emerald-200 opacity-90 cursor-default"
                 }`}
               >
-                {savingConfig
-                  ? "Saving…"
-                  : configDirty
-                  ? "Save Banner & FAQs"
-                  : "✓ All Saved"}
+                {savingConfig ? (
+                  "Saving…"
+                ) : configDirty ? (
+                  "Save Banner & FAQs"
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <CheckIcon className="w-3.5 h-3.5" />
+                    <span>All Saved</span>
+                  </span>
+                )}
               </button>
             </div>
           </div>
 
           {/* Section Quick Jump Pills */}
           <div className="flex flex-wrap gap-1.5">
-            {(
-              [
-                { id: "hero", label: "🎨 1. Hero Banner" },
-                { id: "occasions", label: `🎉 2. Occasion Cards (${pageOccasions.length})` },
-                { id: "pills", label: `🏷️ 3. Filter Pills (${items.length})` },
-                { id: "faqs", label: `❓ 4. FAQs (${draftConfig.faqs.length})` },
-              ] as const
-            ).map((sec) => (
+            {[
+              { id: "hero" as const, label: "1. Hero Banner", icon: <SparklesIcon className="w-3.5 h-3.5 text-rose-600" /> },
+              { id: "occasions" as const, label: `2. Occasion Cards (${pageOccasions.length})`, icon: <GiftIcon className="w-3.5 h-3.5 text-purple-600" /> },
+              { id: "pills" as const, label: `3. Filter Pills (${items.length})`, icon: <TagIcon className="w-3.5 h-3.5 text-blue-600" /> },
+              { id: "faqs" as const, label: `4. FAQs (${draftConfig.faqs.length})`, icon: <FileTextIcon className="w-3.5 h-3.5 text-amber-600" /> },
+            ].map((sec) => (
               <button
                 key={sec.id}
                 type="button"
                 onClick={() => focusPreview(sec.id, true)}
-                className={`rounded-full px-3 py-1 text-[11px] font-bold border transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold border transition-colors cursor-pointer ${
                   activeSection === sec.id
                     ? "border-[#c8102e] bg-rose-50 text-[#c8102e]"
                     : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                {sec.label}
+                {sec.icon}
+                <span>{sec.label}</span>
               </button>
             ))}
           </div>
@@ -1120,8 +1147,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
               className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-gray-50/70 border-b border-gray-100 text-left cursor-pointer"
             >
               <div>
-                <h4 className="text-xs font-extrabold text-gray-900">
-                  🎨 1. Top Hero Banner &amp; Headings
+                <h4 className="text-xs font-extrabold text-gray-900 inline-flex items-center gap-1.5">
+                  <SparklesIcon className="w-3.5 h-3.5 text-rose-600" />
+                  <span>1. Top Hero Banner &amp; Headings</span>
                 </h4>
                 <p className="text-[10px] text-gray-500">
                   Type below to see live updates immediately on the right screen
@@ -1302,8 +1330,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                 className="flex items-center gap-2 text-left cursor-pointer flex-1"
               >
                 <Chevron rotated={openSec.occasions} />
-                <h4 className="text-xs font-extrabold text-gray-900">
-                  🎉 2. Occasion Cards — Top of Page ({pageOccasions.length})
+                <h4 className="text-xs font-extrabold text-gray-900 inline-flex items-center gap-1.5">
+                  <GiftIcon className="w-3.5 h-3.5 text-purple-600" />
+                  <span>2. Occasion Cards — Top of Page ({pageOccasions.length})</span>
                 </h4>
               </button>
               <button
@@ -1345,8 +1374,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                 className="flex items-center gap-2 text-left cursor-pointer flex-1"
               >
                 <Chevron rotated={openSec.pills} />
-                <h4 className="text-xs font-extrabold text-gray-900">
-                  🏷️ 3. Filter Pills — Below Occasion Cards ({items.length})
+                <h4 className="text-xs font-extrabold text-gray-900 inline-flex items-center gap-1.5">
+                  <TagIcon className="w-3.5 h-3.5 text-blue-600" />
+                  <span>3. Filter Pills — Below Occasion Cards ({items.length})</span>
                 </h4>
               </button>
               <button
@@ -1388,8 +1418,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                 className="flex items-center gap-2 text-left cursor-pointer flex-1"
               >
                 <Chevron rotated={openSec.faqs} />
-                <h4 className="text-xs font-extrabold text-gray-900">
-                  ❓ 4. Bottom FAQs ({draftConfig.faqs.length})
+                <h4 className="text-xs font-extrabold text-gray-900 inline-flex items-center gap-1.5">
+                  <FileTextIcon className="w-3.5 h-3.5 text-amber-600" />
+                  <span>4. Bottom FAQs ({draftConfig.faqs.length})</span>
                 </h4>
               </button>
               <button
@@ -1502,11 +1533,16 @@ export function CategoriesView(_props: { categories?: unknown }) {
                         : "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default"
                     }`}
                   >
-                    {savingConfig
-                      ? "Saving…"
-                      : configDirty
-                      ? "Save Banner & FAQs"
-                      : "✓ Banner & FAQs Saved"}
+                    {savingConfig ? (
+                      "Saving…"
+                    ) : configDirty ? (
+                      "Save Banner & FAQs"
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <CheckIcon className="w-3.5 h-3.5" />
+                        <span>Banner &amp; FAQs Saved</span>
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1532,7 +1568,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
               {/* Mini Store Header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100 bg-white">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-zinc-700 text-sm">☰</span>
+                  <MenuIcon className="w-3.5 h-3.5 text-zinc-700" />
                   <span className="w-6 h-6 rounded-full border border-[#c8102e] text-[9px] font-black text-[#c8102e] flex items-center justify-center">
                     MS
                   </span>
@@ -1540,7 +1576,11 @@ export function CategoriesView(_props: { categories?: unknown }) {
                     Delivering to 700091
                   </span>
                 </div>
-                <span className="text-xs text-zinc-400">🔍 🤍 🛒</span>
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <SearchIcon className="w-3 h-3" />
+                  <HeartIcon className="w-3 h-3" />
+                  <ShoppingBagIcon className="w-3 h-3" />
+                </div>
               </div>
 
               {/* Mini Breadcrumb */}
@@ -1819,34 +1859,37 @@ export function CategoriesView(_props: { categories?: unknown }) {
                       <button
                         type="button"
                         onClick={() => setPreviewDevice("desktop")}
-                        className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors cursor-pointer ${
                           previewDevice === "desktop"
                             ? "bg-gray-900 text-white"
                             : "text-gray-600 hover:bg-gray-50"
                         }`}
                       >
-                        💻 Desktop
+                        <LaptopIcon className="w-3.5 h-3.5" />
+                        <span>Desktop</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPreviewDevice("mobile")}
-                        className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors cursor-pointer ${
                           previewDevice === "mobile"
                             ? "bg-gray-900 text-white"
                             : "text-gray-600 hover:bg-gray-50"
                         }`}
                       >
-                        📱 Phone
+                        <SmartphoneIcon className="w-3.5 h-3.5" />
+                        <span>Phone</span>
                       </button>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => setMonitorExpanded(true)}
-                      className="rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-50 cursor-pointer"
                       title="Expand full-screen preview"
                     >
-                      ⛶ Expand
+                      <ExpandIcon className="w-3.5 h-3.5" />
+                      <span>Expand</span>
                     </button>
                   </div>
                 </div>
@@ -1892,32 +1935,35 @@ export function CategoriesView(_props: { categories?: unknown }) {
                           <button
                             type="button"
                             onClick={() => setPreviewDevice("desktop")}
-                            className={`px-2.5 py-1 rounded-md cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer ${
                               previewDevice === "desktop"
                                 ? "bg-gray-900 text-white"
                                 : "text-gray-600 hover:text-gray-900"
                             }`}
                           >
-                            💻 Desktop
+                            <LaptopIcon className="w-3.5 h-3.5" />
+                            <span>Desktop</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setPreviewDevice("mobile")}
-                            className={`px-2.5 py-1 rounded-md cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer ${
                               previewDevice === "mobile"
                                 ? "bg-gray-900 text-white"
                                 : "text-gray-600 hover:text-gray-900"
                             }`}
                           >
-                            📱 Phone
+                            <SmartphoneIcon className="w-3.5 h-3.5" />
+                            <span>Phone</span>
                           </button>
                         </div>
                         <button
                           type="button"
                           onClick={() => setMonitorExpanded(false)}
-                          className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 text-xs font-bold cursor-pointer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 text-xs font-bold cursor-pointer"
                         >
-                          ✕ Close Full Screen
+                          <CloseIcon className="w-3.5 h-3.5" />
+                          <span>Close Full Screen</span>
                         </button>
                       </div>
                     </div>
@@ -1971,17 +2017,19 @@ export function CategoriesView(_props: { categories?: unknown }) {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-gray-900">
-              Interactive 3-Column App Drawer Editor (☰ Menu)
+            <h3 className="text-sm font-bold text-gray-900 inline-flex items-center gap-1.5">
+              <MenuIcon className="w-4 h-4 text-gray-700" />
+              <span>Interactive 3-Column App Drawer Editor (Navigation Menu)</span>
             </h3>
             <p className="text-xs text-gray-500">
-              Click any section in Column 1 → edit sub-menus in Column 2 → edit
+              Click any section in Column 1 to edit sub-menus in Column 2, then edit
               filter links in Column 3. Storefront opens all columns closed until
               clicked.
             </p>
           </div>
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-700">
-            LIVE SYNC WITH STOREFRONT ☰
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-700">
+            <RefreshIcon className="w-3 h-3 text-emerald-700" />
+            <span>LIVE SYNC WITH STOREFRONT</span>
           </span>
         </div>
 
@@ -2112,7 +2160,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
             {!activeCat ? (
               <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-400">
                 <p className="text-xs font-semibold text-gray-500">
-                  ← Click a Main Section in Column 1
+                  Select a Main Section in Column 1
                 </p>
                 <p className="text-[11px] mt-1">
                   Its filter buckets (Flavour, Occasion, Price, etc.) will open here.
@@ -2154,7 +2202,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
                         }}
                         className="rounded-lg bg-rose-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-rose-700 cursor-pointer disabled:opacity-50"
                       >
-                        Create &amp; Add 1st Link →
+                        Create &amp; Add 1st Link
                       </button>
                     </div>
                   </div>
@@ -2233,12 +2281,14 @@ export function CategoriesView(_props: { categories?: unknown }) {
                               </div>
                               <div className="mt-0.5">
                                 {isCustom ? (
-                                  <span className="inline-flex items-center rounded bg-amber-50 border border-amber-200 px-1.5 py-0.2 text-[9px] font-bold text-amber-800">
-                                    ✏️ Custom
+                                  <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                                    <PencilIcon className="w-2.5 h-2.5" />
+                                    <span>Custom</span>
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded bg-sky-50 border border-sky-200 px-1.5 py-0.2 text-[9px] font-bold text-sky-700">
-                                    🔗 Auto-Sync
+                                  <span className="inline-flex items-center gap-1 rounded bg-sky-50 border border-sky-200 px-1.5 py-0.5 text-[9px] font-bold text-sky-700">
+                                    <LinkIcon className="w-2.5 h-2.5" />
+                                    <span>Auto-Sync</span>
                                   </span>
                                 )}
                               </div>
@@ -2254,10 +2304,10 @@ export function CategoriesView(_props: { categories?: unknown }) {
                                       setRenamingGroupRaw(grp.rawGroupName!);
                                       setRenameGroupTitle(grp.title);
                                     }}
-                                    className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                                    className="rounded border border-gray-200 bg-white p-1 text-gray-600 hover:bg-gray-100 cursor-pointer"
                                     title="Rename sub-menu"
                                   >
-                                    ✎
+                                    <PencilIcon className="w-3 h-3" />
                                   </button>
                                   <button
                                     type="button"
@@ -2336,7 +2386,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
             {!activeCat || !activeGrp ? (
               <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-400">
                 <p className="text-xs font-semibold text-gray-500">
-                  ← Click a Sub-Menu in Column 2
+                  Select a Sub-Menu in Column 2
                 </p>
                 <p className="text-[11px] mt-1">
                   View, edit, or add individual clickable filter links here.
@@ -2345,17 +2395,28 @@ export function CategoriesView(_props: { categories?: unknown }) {
             ) : (
               <div className="flex-1 flex flex-col overflow-y-auto max-h-[420px]">
                 <div
-                  className={`px-3 py-2 text-[10px] font-semibold border-b ${
+                  className={`px-3 py-2 text-[10px] font-semibold border-b flex items-center gap-1.5 ${
                     activeGrp.source === "drawer-custom"
                       ? "bg-amber-50/70 border-amber-100 text-amber-800"
                       : "bg-sky-50/70 border-sky-100 text-sky-800"
                   }`}
                 >
-                  {activeGrp.source === "drawer-custom"
-                    ? `✏️ Custom drawer filter links inside "${activeGrp.title}"`
-                    : activeGrp.source === "sync-occasion"
-                    ? `🔗 Auto-synced with Occasion cards — edits here also update the page`
-                    : `🔗 Auto-synced with Filter pills — edits here also update the page`}
+                  {activeGrp.source === "drawer-custom" ? (
+                    <>
+                      <PencilIcon className="w-3 h-3 shrink-0" />
+                      <span>Custom drawer filter links inside &ldquo;{activeGrp.title}&rdquo;</span>
+                    </>
+                  ) : activeGrp.source === "sync-occasion" ? (
+                    <>
+                      <LinkIcon className="w-3 h-3 shrink-0" />
+                      <span>Auto-synced with Occasion cards — edits here also update the page</span>
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-3 h-3 shrink-0" />
+                      <span>Auto-synced with Filter pills — edits here also update the page</span>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex-1 divide-y divide-gray-100">
@@ -2461,7 +2522,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
         <div>
           <h2 className="text-lg font-bold text-gray-900">Categories &amp; Drawer</h2>
           <p className="text-xs text-gray-500">
-            Edit each page tab, add new storefront pages, or customize the global ☰
+            Edit each page tab, add new storefront pages, or customize the global
             App Drawer. Photos upload to ImageKit.
           </p>
         </div>
@@ -2485,7 +2546,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
               : "bg-white text-gray-600 border border-rose-100 hover:bg-rose-50"
           }`}
         >
-          <span>🏠</span>
+          <HomeIcon className="w-4 h-4" />
           <span>Homepage</span>
         </button>
 
@@ -2500,7 +2561,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
                 : "bg-white text-gray-600 border border-rose-100 hover:bg-rose-50"
             }`}
           >
-            <span>{t.icon}</span>
+            <span>{renderCategoryIcon(t.id)}</span>
             <span>{t.label}</span>
           </button>
         ))}
@@ -2525,7 +2586,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
               : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
           }`}
         >
-          <span>☰</span>
+          <MenuIcon className="w-4 h-4" />
           <span>App Drawer (Menu)</span>
         </button>
       </div>
@@ -2554,9 +2615,10 @@ export function CategoriesView(_props: { categories?: unknown }) {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold cursor-pointer"
+                aria-label="Close modal"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg cursor-pointer"
               >
-                ×
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -2575,7 +2637,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                   }}
                   className="w-full flex items-center gap-3 rounded-2xl border border-rose-100 hover:border-rose-400 hover:bg-rose-50/50 p-3 text-left transition-colors cursor-pointer"
                 >
-                  <span className="text-2xl">🏠</span>
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                    <HomeIcon className="w-5 h-5 text-rose-600" />
+                  </div>
                   <span>
                     <span className="block text-xs font-bold text-gray-900">
                       Homepage circle
@@ -2597,7 +2661,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                       }}
                       className="w-full flex items-center gap-3 rounded-2xl border border-rose-100 hover:border-rose-400 hover:bg-rose-50/50 p-3 text-left transition-colors cursor-pointer"
                     >
-                      <span className="text-2xl">{pt.icon}</span>
+                      <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                        {renderCategoryIcon(pt.id, "w-5 h-5 text-rose-600")}
+                      </div>
                       <span>
                         <span className="block text-xs font-bold text-gray-900">
                           {pt.label} filter pill
@@ -2617,7 +2683,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                       }}
                       className="w-full flex items-center gap-3 rounded-2xl border border-rose-100 hover:border-rose-400 hover:bg-rose-50/50 p-3 text-left transition-colors cursor-pointer"
                     >
-                      <span className="text-2xl">🎉</span>
+                      <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+                        <GiftIcon className="w-5 h-5 text-purple-600" />
+                      </div>
                       <span>
                         <span className="block text-xs font-bold text-gray-900">
                           {pt.label} occasion card
@@ -2638,7 +2706,9 @@ export function CategoriesView(_props: { categories?: unknown }) {
                   }}
                   className="w-full flex items-center gap-3 rounded-2xl border border-dashed border-rose-300 bg-rose-50/40 hover:border-rose-500 hover:bg-rose-50 p-3 text-left transition-colors cursor-pointer"
                 >
-                  <span className="text-2xl">➕</span>
+                  <div className="w-9 h-9 rounded-xl bg-rose-100/70 flex items-center justify-center shrink-0">
+                    <PlusIcon className="w-5 h-5 text-[#c8102e]" />
+                  </div>
                   <span>
                     <span className="block text-xs font-bold text-[#c8102e]">
                       New Storefront Page
@@ -2821,7 +2891,7 @@ export function CategoriesView(_props: { categories?: unknown }) {
                       onClick={() => setStep(1)}
                       className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer"
                     >
-                      ← Back
+                      Back
                     </button>
                   ) : (
                     <span />

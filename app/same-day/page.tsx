@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
+import { ZapIcon, TagIcon } from "../components/StorefrontIcons";
 import type { Product } from "../data/types";
 import { formatDbProduct } from "../lib/db";
 
@@ -144,8 +145,9 @@ export default function SameDayPage() {
                 Dispatched directly from our Chingrighata central florist &amp; bakery hub. Salt Lake, New Town &amp; Central Kolkata delivered in 45–60 mins.
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-3.5">
-                <span className="text-xs font-bold bg-white text-rose-950 px-3 py-1.5 rounded-full shadow-xs">
-                  ⚡ 90-Min Guaranteed
+                <span className="text-xs font-bold bg-white text-rose-950 px-3 py-1.5 rounded-full shadow-xs inline-flex items-center gap-1.5">
+                  <ZapIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>90-Min Guaranteed</span>
                 </span>
                 <span className="text-xs font-semibold text-rose-100">
                   Cutoff: 9:30 PM for Tonight&apos;s Delivery
@@ -220,13 +222,14 @@ export default function SameDayPage() {
               <button
                 type="button"
                 onClick={() => setOnlyUnder700(!onlyUnder700)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   onlyUnder700
                     ? "bg-rose-100 border-rose-300 text-rose-900 font-bold"
                     : "bg-white border-zinc-300 text-zinc-700 hover:border-zinc-400"
                 }`}
               >
-                💰 Under ₹699
+                <TagIcon className="w-3.5 h-3.5 text-rose-600" />
+                <span>Under ₹699</span>
               </button>
 
               {(onlyUnder700 || activeTab !== "all") && (
@@ -315,7 +318,7 @@ export default function SameDayPage() {
                   key={area}
                   className="bg-white border border-zinc-200/80 rounded-lg p-2.5 flex items-center gap-2 shadow-2xs"
                 >
-                  <span className="text-[#c8102e]">⚡</span>
+                  <ZapIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
                   <span>{area}</span>
                 </div>
               ))}

@@ -78,7 +78,7 @@ export const DEFAULT_PAGE_CONFIGS: Record<string, PageConfig> = {
     heroDescription:
       "Baked fresh on order at our Chingrighata central kitchen. 100% pure veg (eggless) available with free name piping & knife.",
     promoPill: "Use Code: CAKE15",
-    deliveryNote: "⚡ 45–90 Mins Delivery Across Kolkata",
+    deliveryNote: "45–90 Mins Delivery Across Kolkata",
     badge1Label: "Dietary Assurance",
     badge1Value: "100% Eggless Option",
     badge2Label: "Surprise Slot",
@@ -111,7 +111,7 @@ export const DEFAULT_PAGE_CONFIGS: Record<string, PageConfig> = {
     heroDescription:
       "Dispatched from our Chingrighata hub within 45–90 minutes. 100% bloom freshness guaranteed with complimentary greeting card.",
     promoPill: "Use Code: FRESH15",
-    deliveryNote: "⚡ 90-Min Express Across Kolkata",
+    deliveryNote: "90-Min Express Across Kolkata",
     badge1Label: "Express Delivery",
     badge1Value: "45–90 Mins Hub Slot",
     badge2Label: "Surprise Timings",
@@ -144,7 +144,7 @@ export const DEFAULT_PAGE_CONFIGS: Record<string, PageConfig> = {
     heroDescription:
       "Handcrafted fresh bouquets and artisanal celebration cakes dispatched together in one single slot across Kolkata within 45–90 minutes.",
     promoPill: "Use Code: COMBO15",
-    deliveryNote: "⚡ Single-Slot Dispatch Across Kolkata",
+    deliveryNote: "Single-Slot Dispatch Across Kolkata",
     badge1Label: "Combined Delivery",
     badge1Value: "45–90 Mins One Rider",
     badge2Label: "Surprise Slot",
@@ -187,7 +187,7 @@ export function getDefaultPageConfig(slug: string, label?: string): PageConfig {
     heroDescription:
       "Handcrafted fresh and dispatched from our Chingrighata hub across Kolkata within 45–90 minutes.",
     promoPill: "Use Code: MS15",
-    deliveryNote: "⚡ 45–90 Mins Delivery Across Kolkata",
+    deliveryNote: "45–90 Mins Delivery Across Kolkata",
     badge1Label: "Quality Assurance",
     badge1Value: "100% Fresh Handpicked",
     badge2Label: "Surprise Slot",

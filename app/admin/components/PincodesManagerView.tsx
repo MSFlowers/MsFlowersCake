@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { CloseIcon } from "@/app/components/StorefrontIcons";
 
 export interface PincodeRecord {
   id: string;
@@ -443,9 +444,10 @@ export function PincodesView() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg text-lg leading-none"
+                aria-label="Close modal"
+                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg text-sm cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 

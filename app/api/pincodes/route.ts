@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/app/lib/supabase";
+import { getAllPincodes } from "@/app/lib/pincodesStore";
 
 export async function GET() {
   try {
-    const { data: pincodes, error } = await supabase
-      .from("pincodes")
-      .select("pincode, area_name, is_active, delivery_time")
-      .eq("is_active", true)
-      .order("pincode", { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ pincodes: [] });
-    }
-
-    return NextResponse.json({ pincodes: pincodes || [] });
+    const { pincodes } = await getAllPincodes();
+    const activePincodes = (pincodes || []).filter((p) => p.is_active);
+    return NextResponse.json({ pincodes: activePincodes });
   } catch {
     return NextResponse.json({ pincodes: [] });
   }

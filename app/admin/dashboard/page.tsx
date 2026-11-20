@@ -46,7 +46,6 @@ import {
   CouponsView,
   CustomersView,
   ProductsView,
-  SubscribersView,
 } from "../components/AdminSubViews";
 
 type NavSectionId =
@@ -59,10 +58,24 @@ type NavSectionId =
   | "customers"
   | "reviews"
   | "inquiries"
-  | "subscribers"
   | "hero-slides"
   | "delivery-settings"
   | "cms";
+
+const VALID_SECTIONS: readonly NavSectionId[] = [
+  "dashboard",
+  "orders",
+  "products",
+  "categories",
+  "coupons",
+  "pincodes",
+  "customers",
+  "reviews",
+  "inquiries",
+  "hero-slides",
+  "delivery-settings",
+  "cms",
+] as const;
 
 type TimeMood = "morning" | "afternoon" | "evening" | "night";
 
@@ -141,7 +154,6 @@ const SECTION_TITLES: Record<NavSectionId, string> = {
   customers: "Customers",
   reviews: "Reviews Moderation",
   inquiries: "Customer Inquiries",
-  subscribers: "Newsletter Subscribers",
   "hero-slides": "Hero Slides & Banners",
   "delivery-settings": "Delivery Settings",
   cms: "Store Settings",
@@ -158,7 +170,6 @@ export default function AdminDashboardPage() {
     lowStock,
     coupons,
     customers,
-    subscribers,
     catalogProducts,
     categories,
     metrics,
@@ -210,7 +221,7 @@ export default function AdminDashboardPage() {
     else setDashboardLoading(true);
 
     try {
-      const res = await fetch("/api/admin/dashboard");
+      const res = await fetch("/api/admin/dashboard", { cache: "no-store" });
       const data = await res.json();
       if (data && data.metrics) {
         setDashboardData(data);
@@ -232,18 +243,18 @@ export default function AdminDashboardPage() {
       return dashboardData.metrics;
     }
     return {
-      ordersToProcess: metrics.ordersToProcess > 0 ? metrics.ordersToProcess : 2,
-      reviewsToApprove: metrics.reviewsToApprove > 0 ? metrics.reviewsToApprove : 1,
-      openInquiries: metrics.openInquiries > 0 ? metrics.openInquiries : 2,
-      lowStockAlerts: 2,
-      totalRevenue: metrics.totalRevenue > 0 ? metrics.totalRevenue : 4592,
-      totalOrders: metrics.totalOrders > 0 ? metrics.totalOrders : 5,
-      registeredCustomers: metrics.registeredCustomers > 0 ? metrics.registeredCustomers : 4,
-      totalProducts: 24,
-      activeProducts: 24,
-      totalCoupons: 6,
-      activeCoupons: 6,
-      totalPincodes: 15,
+      ordersToProcess: metrics.ordersToProcess || 0,
+      reviewsToApprove: metrics.reviewsToApprove || 0,
+      openInquiries: metrics.openInquiries || 0,
+      lowStockAlerts: metrics.lowStockAlerts || 0,
+      totalRevenue: metrics.totalRevenue || 0,
+      totalOrders: metrics.totalOrders || 0,
+      registeredCustomers: metrics.registeredCustomers || 0,
+      totalProducts: catalogProducts.length,
+      activeProducts: catalogProducts.length,
+      totalCoupons: coupons.length,
+      activeCoupons: coupons.filter((c) => c.active).length,
+      totalPincodes: 0,
     };
   }, [dashboardData, metrics]);
 
@@ -354,7 +365,86 @@ export default function AdminDashboardPage() {
       .slice(0, 4);
   }, [catalogProducts, orders]);
 
+  // Restore and synchronize active tab on refresh, direct URL query, or browser back/forward
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function getInitialSection(): NavSectionId {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get("tab") || params.get("section");
+        if (tabParam && (VALID_SECTIONS as readonly string[]).includes(tabParam)) {
+          return tabParam as NavSectionId;
+        }
+
+        const hashParam = window.location.hash.replace("#", "");
+        if (hashParam && (VALID_SECTIONS as readonly string[]).includes(hashParam)) {
+          return hashParam as NavSectionId;
+        }
+
+        const saved = localStorage.getItem("ms_admin_active_tab");
+        if (saved && (VALID_SECTIONS as readonly string[]).includes(saved)) {
+          return saved as NavSectionId;
+        }
+      } catch {
+        // fallback
+      }
+      return "dashboard";
+    }
+
+    const initial = getInitialSection();
+    if (initial !== "dashboard") {
+      setActiveSection(initial);
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("tab") !== initial) {
+          url.searchParams.set("tab", initial);
+          url.searchParams.delete("section");
+          window.history.replaceState({ tab: initial }, "", url.toString());
+        }
+        localStorage.setItem("ms_admin_active_tab", initial);
+      } catch {}
+
+      // Auto-expand relevant sidebar group
+      if (["orders", "products", "categories", "coupons", "pincodes"].includes(initial)) {
+        setCatalogGroupOpen(true);
+      } else if (["customers", "reviews", "inquiries"].includes(initial)) {
+        setCustomersGroupOpen(true);
+      } else if (["hero-slides", "cms"].includes(initial)) {
+        setCmsGroupOpen(true);
+      } else if (initial === "delivery-settings") {
+        setSettingsGroupOpen(true);
+      }
+    } else {
+      try {
+        localStorage.setItem("ms_admin_active_tab", "dashboard");
+      } catch {}
+    }
+
+    function handlePopState(e: PopStateEvent) {
+      try {
+        const currentParams = new URLSearchParams(window.location.search);
+        const currentTab = (currentParams.get("tab") ||
+          currentParams.get("section") ||
+          e.state?.tab ||
+          "dashboard") as NavSectionId;
+        if ((VALID_SECTIONS as readonly string[]).includes(currentTab)) {
+          setActiveSection(currentTab);
+          localStorage.setItem("ms_admin_active_tab", currentTab);
+        }
+      } catch {}
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   function handleLogout() {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("ms_admin_active_tab");
+      } catch {}
+    }
     logoutAdmin();
     router.push("/admin/login");
   }
@@ -362,6 +452,24 @@ export default function AdminDashboardPage() {
   function selectSection(id: NavSectionId) {
     setActiveSection(id);
     setMobileMenuOpen(false);
+
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        if (id === "dashboard") {
+          url.searchParams.delete("tab");
+          url.searchParams.delete("section");
+        } else {
+          url.searchParams.set("tab", id);
+          url.searchParams.delete("section");
+        }
+        window.history.pushState({ tab: id }, "", url.toString());
+        localStorage.setItem("ms_admin_active_tab", id);
+      } catch {
+        // ignore history / storage errors
+      }
+    }
+
     if (id === "dashboard") {
       loadDashboardData(true);
     }
@@ -552,12 +660,6 @@ export default function AdminDashboardPage() {
                   label: "Inquiries",
                   icon: <MessageSquareIcon className="w-4 h-4 shrink-0" />,
                   badge: liveMetrics.openInquiries,
-                },
-                {
-                  id: "subscribers" as const,
-                  label: "Subscribers",
-                  icon: <MailIcon className="w-4 h-4 shrink-0" />,
-                  badge: subscribers.length,
                 },
               ].map((item) => (
                 <button
@@ -1215,70 +1317,9 @@ export default function AdminDashboardPage() {
                     ? dashboardData.topProducts
                     : topProducts.length > 0
                     ? topProducts
-                    : [
-                        {
-                          id: "MS-FL-01",
-                          name: "Luxury Red Roses Bouquet (12 Blooms)",
-                          group: "Flowers",
-                          price: 799,
-                          image: "/products/flowers/red-roses-bouquet.jpg",
-                          soldCount: 2,
-                        },
-                        {
-                          id: "MS-FL-02",
-                          name: "Imperial White Lilies & Carnations Bunch",
-                          group: "Flowers",
-                          price: 1299,
-                          image: "/products/flowers/white-lilies-carnations.jpg",
-                          soldCount: 1,
-                        },
-                        {
-                          id: "MS-CB-01",
-                          name: "Classic Romance Rose Bouquet & Chocolate Cake",
-                          group: "Combos",
-                          price: 1899,
-                          image: "/products/combos/roses-chocolate-combo.jpg",
-                          soldCount: 1,
-                        },
-                        {
-                          id: "MS-CK-02",
-                          name: "Dutch Chocolate Truffle Cake (1 Kg)",
-                          group: "Cakes",
-                          price: 1099,
-                          image: "/products/cakes/chocolate-truffle-cake.jpg",
-                          soldCount: 1,
-                        },
-                        {
-                          id: "MS-FL-03",
-                          name: "Exotic Purple Orchids in Glass Vase",
-                          group: "Flowers",
-                          price: 499,
-                          image: "/products/flowers/purple-orchids-vase.jpg",
-                          soldCount: 1,
-                        },
-                      ];
+                    : [];
 
-                const displayLowStock =
-                  lowStock.length > 0
-                    ? lowStock
-                    : [
-                        {
-                          id: "ls-1",
-                          productName: "Velvet Dutch Roses (6-stem wrap)",
-                          category: "Flowers",
-                          variant: "Standard Bunch",
-                          stock: 3,
-                          threshold: 10,
-                        },
-                        {
-                          id: "ls-2",
-                          productName: "Belgian Chocolate Truffle (500g)",
-                          category: "Cakes",
-                          variant: "Half Kg",
-                          stock: 4,
-                          threshold: 10,
-                        },
-                      ];
+                const displayLowStock = lowStock;
 
                 const displayInquiries =
                   dashboardData?.recentInquiries && dashboardData.recentInquiries.length > 0
@@ -1288,7 +1329,7 @@ export default function AdminDashboardPage() {
                 const displayOrders =
                   dashboardData?.recentOrders && dashboardData.recentOrders.length > 0
                     ? dashboardData.recentOrders
-                    : orders;
+                    : [];
 
                 return (
                   <>
@@ -1347,7 +1388,7 @@ export default function AdminDashboardPage() {
                                 onClick={() => selectSection("products")}
                                 className="text-xs font-semibold text-rose-600 hover:text-rose-700 cursor-pointer"
                               >
-                                Manage in Catalog &rarr;
+                                Manage in Catalog
                               </button>
                             )}
                           </div>
@@ -1889,8 +1930,6 @@ export default function AdminDashboardPage() {
             <ReviewsModerationView />
           ) : activeSection === "inquiries" ? (
             <InquiriesManagerView />
-          ) : activeSection === "subscribers" ? (
-            <SubscribersView subscribers={subscribers} />
           ) : activeSection === "hero-slides" ? (
             <HeroSlidesManagerView onSlideCountChange={setHeroSlidesCount} />
           ) : activeSection === "delivery-settings" ? (

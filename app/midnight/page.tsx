@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import ProductCard from "../components/ProductCard";
+import { MoonIcon, TagIcon } from "../components/StorefrontIcons";
 import type { Product } from "../data/types";
 import { formatDbProduct } from "../lib/db";
 
@@ -144,8 +145,9 @@ export default function MidnightPage() {
                 Make birthdays and anniversaries memorable! Our riders deliver between 11:30 PM to 12:00 AM with complimentary sparkler candle &amp; message card.
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-3.5">
-                <span className="text-xs font-bold bg-white text-indigo-950 px-3 py-1.5 rounded-full shadow-xs">
-                  🌙 11:30 PM – 12:00 AM Slot
+                <span className="text-xs font-bold bg-white text-indigo-950 px-3 py-1.5 rounded-full shadow-xs inline-flex items-center gap-1.5">
+                  <MoonIcon className="w-3.5 h-3.5 text-indigo-700 fill-indigo-700" />
+                  <span>11:30 PM – 12:00 AM Slot</span>
                 </span>
                 <span className="text-xs font-semibold text-indigo-200">
                   Cutoff: Book by 9:45 PM for Tonight
@@ -220,13 +222,14 @@ export default function MidnightPage() {
               <button
                 type="button"
                 onClick={() => setOnlyUnder1000(!onlyUnder1000)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   onlyUnder1000
                     ? "bg-indigo-100 border-indigo-300 text-indigo-900 font-bold"
                     : "bg-white border-zinc-300 text-zinc-700 hover:border-zinc-400"
                 }`}
               >
-                💰 Under ₹999
+                <TagIcon className="w-3.5 h-3.5 text-indigo-700" />
+                <span>Under ₹999</span>
               </button>
 
               {(onlyUnder1000 || activeTab !== "all") && (
@@ -315,7 +318,7 @@ export default function MidnightPage() {
                   key={area}
                   className="bg-white border border-indigo-100 rounded-lg p-2.5 flex items-center gap-2 shadow-2xs"
                 >
-                  <span className="text-[#4338ca]">🌙</span>
+                  <MoonIcon className="w-3.5 h-3.5 text-[#4338ca] fill-[#4338ca] shrink-0" />
                   <span>{area}</span>
                 </div>
               ))}

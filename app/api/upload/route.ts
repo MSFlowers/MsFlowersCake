@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadImageToImageKit } from "@/app/lib/imagekit";
+import { isAdminRequest } from "@/app/lib/adminAuth";
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

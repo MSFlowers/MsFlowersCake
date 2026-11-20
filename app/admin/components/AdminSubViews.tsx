@@ -3,6 +3,7 @@
 
 import ProductsManager from "./ProductsManager";
 import React, { useEffect, useMemo, useState } from "react";
+import { CheckIcon } from "@/app/components/StorefrontIcons";
 import {
   AdminCoupon,
   AdminCustomer,
@@ -515,7 +516,6 @@ export function OrdersView({
               onClick={() => setSelectedOrderId(null)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer shrink-0"
             >
-              <span>&larr;</span>
               <span>Back to Orders</span>
             </button>
             <div className="min-w-0">
@@ -582,7 +582,7 @@ export function OrdersView({
                         : "bg-gray-200 text-gray-600"
                     }`}
                   >
-                    {completed && !isCurrent ? "✓" : idx + 1}
+                    {completed && !isCurrent ? <CheckIcon className="w-3.5 h-3.5 text-white" /> : idx + 1}
                   </span>
                   <span
                     className={`text-xs font-bold ${

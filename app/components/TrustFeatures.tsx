@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
+import { ZapIcon, FlowerIcon, CakeIcon, GiftIcon, SparklesIcon } from "./StorefrontIcons";
 
 interface TrustPillar {
   id: string;
   tag: string;
+  iconType: "zap" | "flower" | "cake" | "gift";
   title: string;
   subtitle: string;
   imageSrc: string;
@@ -15,7 +17,8 @@ interface TrustPillar {
 const TRUST_PILLARS: TrustPillar[] = [
   {
     id: "express",
-    tag: "⚡ 90-Min Hub Dispatch",
+    tag: "90-Min Hub Dispatch",
+    iconType: "zap",
     title: "Fastest Kolkata Delivery",
     subtitle: "Dispatched hot & fresh from our Salt Lake & Chingrighata hub with live WhatsApp tracking.",
     imageSrc: "/trust/express-delivery-kolkata.jpg",
@@ -23,7 +26,8 @@ const TRUST_PILLARS: TrustPillar[] = [
   },
   {
     id: "fresh-blooms",
-    tag: "🌸 100% Farm-Fresh Daily",
+    tag: "100% Farm-Fresh Daily",
+    iconType: "flower",
     title: "Handpicked Daily Blooms",
     subtitle: "Selected daily at dawn with dewdrops on petals — longer vase life guaranteed.",
     imageSrc: "/trust/farm-fresh-blooms.jpg",
@@ -31,7 +35,8 @@ const TRUST_PILLARS: TrustPillar[] = [
   },
   {
     id: "freshly-baked",
-    tag: "🎂 Oven-Fresh On Order",
+    tag: "Oven-Fresh On Order",
+    iconType: "cake",
     title: "Baked Fresh On Order",
     subtitle: "Artisanal sponge baked only after you order. 100% pure egg & eggless options available.",
     imageSrc: "/trust/freshly-baked-cakes.jpg",
@@ -39,13 +44,21 @@ const TRUST_PILLARS: TrustPillar[] = [
   },
   {
     id: "greeting-card",
-    tag: "💌 Complimentary Gift",
+    tag: "Complimentary Gift",
+    iconType: "gift",
     title: "Free Handwritten Card",
     subtitle: "Express your heart with our custom wax-sealed calligraphy message card tucked in.",
     imageSrc: "/trust/free-greeting-card.jpg",
     alt: "Aesthetic wax-sealed love letter card and red roses flatlay",
   },
 ];
+
+function PillarTagIcon({ type }: { type: TrustPillar["iconType"] }) {
+  if (type === "zap") return <ZapIcon className="w-3 h-3 text-[#c8102e]" />;
+  if (type === "flower") return <FlowerIcon className="w-3 h-3 text-[#c8102e]" />;
+  if (type === "cake") return <CakeIcon className="w-3 h-3 text-[#c8102e]" />;
+  return <GiftIcon className="w-3 h-3 text-[#c8102e]" />;
+}
 
 export default function TrustFeatures() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -101,8 +114,9 @@ export default function TrustFeatures() {
       <div className="bg-linear-to-b from-[#fff6f4] via-[#fef8f6] to-[#fff3f0] border border-rose-100 rounded-3xl p-5 sm:p-10 2xl:p-12 shadow-xs">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-12">
-          <span className="inline-block text-[11px] font-black uppercase tracking-widest text-[#c8102e] bg-rose-100/90 border border-rose-200/80 px-3.5 py-1 rounded-full shadow-2xs">
-            ✿ THE ART OF GIFTING
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-[#c8102e] bg-rose-100/90 border border-rose-200/80 px-3.5 py-1 rounded-full shadow-2xs">
+            <SparklesIcon className="w-3.5 h-3.5 text-[#c8102e]" />
+            <span>THE ART OF GIFTING</span>
           </span>
           <h2 className="text-xl sm:text-3xl 2xl:text-4xl font-black text-zinc-900 mt-2 tracking-tight">
             Crafted with Love, <span className="text-[#c8102e]">Delivered with Care</span>
@@ -145,8 +159,9 @@ export default function TrustFeatures() {
                   {/* Card Content */}
                   <div className="p-4 flex flex-col justify-between">
                     <div>
-                      <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#c8102e] mb-1 block">
-                        {pillar.tag}
+                      <span className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-[#c8102e] mb-1">
+                        <PillarTagIcon type={pillar.iconType} />
+                        <span>{pillar.tag}</span>
                       </span>
                       <h3 className="text-base font-extrabold text-zinc-900 tracking-tight leading-snug">
                         {pillar.title}
@@ -228,8 +243,9 @@ export default function TrustFeatures() {
               {/* Text Info */}
               <div className="p-5 sm:p-5.5 2xl:p-6 flex-1 flex flex-col justify-between">
                 <div>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-[#c8102e] mb-1.5 block">
-                    {pillar.tag}
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#c8102e] mb-1.5">
+                    <PillarTagIcon type={pillar.iconType} />
+                    <span>{pillar.tag}</span>
                   </span>
                   <h3 className="text-base sm:text-lg 2xl:text-xl font-extrabold text-zinc-900 tracking-tight leading-snug group-hover:text-[#c8102e] transition-colors">
                     {pillar.title}

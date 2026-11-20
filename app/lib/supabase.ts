@@ -13,9 +13,15 @@ const supabaseAnonKey =
   "sb_publishable_TeROVf3GNSofhwJ5hirzXw_nmJxnzM-";
 
 const supabaseSecretKey =
-  process.env.SUPABASE_Secret_key ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_Secret_key ||
   supabaseAnonKey;
+
+if (typeof window === "undefined" && supabaseSecretKey === supabaseAnonKey) {
+  console.error(
+    "[supabase] supabaseAdmin is using the ANON key. Set SUPABASE_SERVICE_ROLE_KEY to the real service_role key, then run supabase/harden_rls.sql."
+  );
+}
 
 // Client for public queries (Storefront read operations respecting RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

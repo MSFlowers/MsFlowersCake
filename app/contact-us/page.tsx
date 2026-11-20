@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+import { SparklesIcon, ZapIcon } from "../components/StorefrontIcons";
 
 const DEFAULT_STORE_SETTINGS = {
   store_name: "MS Flowers & Cake",
@@ -197,6 +198,7 @@ export default function ContactUsPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState<SubmittedInquiry | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -247,9 +249,29 @@ export default function ContactUsPage() {
     return { whatsappUrl, mailtoUrl };
   }, [submitted, settings.store_name, settings.support_email, whatsappCleanNumber, whatsappDirectUrl]);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !message.trim()) return;
+
+    setSubmitting(true);
+    try {
+      await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+          inquiry_type: category,
+          location: "Kolkata Hub",
+          message: orderId.trim() ? `[Order ID: #${orderId.trim()}] ${message.trim()}` : message.trim(),
+        }),
+      });
+    } catch (err) {
+      console.warn("Inquiry sync warning:", err);
+    } finally {
+      setSubmitting(false);
+    }
 
     setSubmitted({
       category,
@@ -289,7 +311,8 @@ export default function ContactUsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
               <div>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-[#c8102e] bg-rose-100/90 border border-rose-200/80 px-3 py-1 rounded-full">
-                  ✿ Kolkata Customer Care
+                  <SparklesIcon className="w-3.5 h-3.5 text-[#c8102e]" />
+                  <span>Kolkata Customer Care</span>
                 </span>
                 <h1 className="text-2xl sm:text-4xl font-black text-zinc-900 tracking-tight mt-2.5">
                   Contact <span className="text-[#c8102e]">Us!!</span>
@@ -305,7 +328,8 @@ export default function ContactUsPage() {
                   WhatsApp Active
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-zinc-700 border border-zinc-200">
-                  ⚡ 90-Min Kolkata Hub Dispatch
+                  <ZapIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>90-Min Kolkata Hub Dispatch</span>
                 </span>
               </div>
             </div>
@@ -690,12 +714,22 @@ export default function ContactUsPage() {
                       </p>
                       <button
                         type="submit"
-                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#c8102e] hover:bg-[#a60c25] text-white text-sm font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+                        disabled={submitting}
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#c8102e] hover:bg-[#a60c25] disabled:opacity-75 text-white text-sm font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                       >
-                        <span>Submit Message</span>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-                        </svg>
+                        {submitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Sending...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Submit Message</span>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                            </svg>
+                          </>
+                        )}
                       </button>
                     </div>
                   </form>

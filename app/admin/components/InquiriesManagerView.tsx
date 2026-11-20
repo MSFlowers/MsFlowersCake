@@ -1,6 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { supabase } from "@/app/lib/supabase";
+import {
+  MapPinIcon,
+  EyeIcon,
+  RefreshIcon,
+  CheckIcon,
+  MailIcon,
+  PhoneIcon,
+  CloseIcon,
+} from "@/app/components/StorefrontIcons";
 
 export interface DbInquiry {
   id: string;
@@ -14,57 +24,23 @@ export interface DbInquiry {
   created_at: string;
 }
 
-const DEFAULT_INQUIRIES: DbInquiry[] = [
-  {
-    id: "inq-1",
-    name: "Sushain",
-    email: "ask@gmail.com",
-    phone: "9876543210",
-    inquiry_type: "Bulk / Wholesale Order",
-    location: "Salt Lake, Kolkata",
-    message: "Need 40 Dutch rose bouquets and personalized gift boxes for our corporate anniversary event.",
-    status: "resolved",
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: "inq-2",
-    name: "Roel Sharma",
-    email: "roel.sharma@gmail.com",
-    phone: "9876543210",
-    inquiry_type: "Custom Bouquet / Event",
-    location: "New Town, Kolkata",
-    message: "Looking for stage floral decor and 50 wedding centerpiece bouquets for next weekend reception.",
-    status: "unresolved",
-    created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
-  },
-  {
-    id: "inq-3",
-    name: "Megha Sen",
-    email: "megha.sen@gmail.com",
-    phone: "9830112233",
-    inquiry_type: "Bulk / Wholesale Order",
-    location: "Park Street, Kolkata",
-    message: "We require regular weekly flower arrangements for our boutique hotel lobby. Please share corporate rate card.",
-    status: "unresolved",
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-];
+const DEFAULT_INQUIRIES: DbInquiry[] = [];
 
 export function InquiriesManagerView() {
-  const [inquiries, setInquiries] = useState<DbInquiry[]>(DEFAULT_INQUIRIES);
+  const [inquiries, setInquiries] = useState<DbInquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "unresolved" | "resolved">("all");
   const [selectedInquiry, setSelectedInquiry] = useState<DbInquiry | null>(null);
 
-  const fetchInquiries = async (isRefresh = false) => {
+  const fetchInquiries = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/inquiries");
+      const res = await fetch("/api/admin/inquiries", { cache: "no-store" });
       const data = await res.json();
-      if (data.success && Array.isArray(data.inquiries) && data.inquiries.length > 0) {
+      if (data.success && Array.isArray(data.inquiries)) {
         setInquiries(data.inquiries);
       }
     } catch (err) {
@@ -73,11 +49,46 @@ export function InquiriesManagerView() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchInquiries();
-  }, []);
+
+    // Realtime live sync on inquiries table
+    let channel: any = null;
+    try {
+      const channelId = `admin-inquiries-live-${Math.random().toString(36).slice(2, 8)}`;
+      channel = supabase
+        .channel(channelId)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "inquiries",
+          },
+          () => {
+            fetchInquiries(true);
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn("Realtime inquiries listener note:", e);
+    }
+
+    // Window focus / visibility listener so switching tabs updates immediately
+    const handleSync = () => {
+      fetchInquiries(true);
+    };
+    window.addEventListener("focus", handleSync);
+    document.addEventListener("visibilitychange", handleSync);
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      window.removeEventListener("focus", handleSync);
+      document.removeEventListener("visibilitychange", handleSync);
+    };
+  }, [fetchInquiries]);
 
   const handleToggleStatus = async (inq: DbInquiry) => {
     const nextStatus = inq.status === "resolved" ? "unresolved" : "resolved";
@@ -321,7 +332,14 @@ export function InquiriesManagerView() {
                           : "bg-amber-50 text-amber-800 border border-amber-200"
                       }`}
                     >
-                      {isResolved ? "✓ Resolved" : "• New & Unresolved"}
+                      {isResolved ? (
+                        <>
+                          <CheckIcon className="w-3 h-3 text-emerald-600" />
+                          <span>Resolved</span>
+                        </>
+                      ) : (
+                        <span>• New &amp; Unresolved</span>
+                      )}
                     </span>
 
                     {/* Tag Pill */}
@@ -331,7 +349,10 @@ export function InquiriesManagerView() {
 
                     {/* Location & Date */}
                     <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                      <span>📍 {inq.location}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <MapPinIcon className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{inq.location}</span>
+                      </span>
                       <span className="mx-1">&bull;</span>
                       <span>{dateStr}</span>
                     </span>
@@ -342,21 +363,32 @@ export function InquiriesManagerView() {
                     <button
                       type="button"
                       onClick={() => setSelectedInquiry(inq)}
-                      className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 transition-colors cursor-pointer"
                     >
-                      👁 View
+                      <EyeIcon className="w-3.5 h-3.5 text-gray-500" />
+                      <span>View</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(inq)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                         isResolved
                           ? "border border-gray-300 text-gray-700 hover:bg-gray-100"
                           : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
                       }`}
                     >
-                      {isResolved ? "↺ Reopen" : "✓ Resolve"}
+                      {isResolved ? (
+                        <>
+                          <RefreshIcon className="w-3.5 h-3.5 text-gray-600" />
+                          <span>Reopen</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckIcon className="w-3.5 h-3.5 text-white" />
+                          <span>Resolve</span>
+                        </>
+                      )}
                     </button>
 
                     <button
@@ -375,12 +407,12 @@ export function InquiriesManagerView() {
                 {/* Contact Row: Email, Phone, WhatsApp */}
                 <div className="flex flex-wrap items-center gap-4 text-xs">
                   <div className="flex items-center gap-1.5 text-gray-700 font-medium">
-                    <span className="text-gray-400">✉️</span>
+                    <MailIcon className="w-3.5 h-3.5 text-gray-400" />
                     <span>{inq.email}</span>
                   </div>
 
                   <div className="flex items-center gap-1.5 text-gray-700 font-medium">
-                    <span className="text-gray-400">📞</span>
+                    <PhoneIcon className="w-3.5 h-3.5 text-gray-400" />
                     <span>{inq.phone}</span>
                   </div>
 
@@ -419,9 +451,10 @@ export function InquiriesManagerView() {
               <button
                 type="button"
                 onClick={() => setSelectedInquiry(null)}
-                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg text-lg leading-none"
+                aria-label="Close modal"
+                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg text-sm cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 

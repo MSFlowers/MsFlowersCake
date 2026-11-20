@@ -209,6 +209,7 @@ function hydrateAdminStore() {
   try {
     // Clear legacy mock data key from localStorage if present
     window.localStorage.removeItem("ms_admin_data_v2");
+    window.localStorage.removeItem("ms_admin_data_v3");
 
     const rawSession = window.localStorage.getItem(SESSION_KEY);
     if (rawSession) {

@@ -1,104 +1,84 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase";
 
-const ORDER_CUSTOMERS = [
-  {
-    id: "cust-01",
-    name: "Sushain Demo",
-    email: "sushain16kaushal@gmail.com",
-    phone: "9876543210",
-    role: "REGISTERED MEMBER",
-    orders_count: 1,
-    total_spent: 1218,
-    created_at: new Date(Date.now() - 14400000).toISOString(),
-  },
-  {
-    id: "cust-02",
-    name: "M. Irsu",
-    email: "m.irsu77777@gmail.com",
-    phone: "6201069758",
-    role: "REPEAT BUYER",
-    orders_count: 2,
-    total_spent: 768,
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "cust-03",
-    name: "Rahul Mukherjee",
-    email: "rahul.m@gmail.com",
-    phone: "9831098765",
-    role: "CUSTOMER",
-    orders_count: 1,
-    total_spent: 1758,
-    created_at: new Date(Date.now() - 28800000).toISOString(),
-  },
-  {
-    id: "cust-04",
-    name: "Ananya Banerjee",
-    email: "ananya.banerjee@gmail.com",
-    phone: "9830998877",
-    role: "CUSTOMER",
-    orders_count: 1,
-    total_spent: 848,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
-
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    let dbCustomers: any[] = [];
-    try {
-      const { data, error } = await supabaseAdmin
-        .from("customers")
-        .select("id, name, email, phone, role, orders_count, total_spent, created_at")
-        .order("created_at", { ascending: false });
+    // 1. Fetch genuine customers from Supabase customers table
+    const { data: dbCustomers, error: custErr } = await supabaseAdmin
+      .from("customers")
+      .select("id, name, email, phone, role, orders_count, total_spent, created_at")
+      .order("created_at", { ascending: false });
 
-      if (!error && Array.isArray(data)) {
-        dbCustomers = data;
+    if (custErr) {
+      console.error("Error fetching customers from Supabase:", custErr);
+      return NextResponse.json(
+        {
+          success: false,
+          error: custErr.message,
+          customers: [],
+          stats: {
+            totalCustomers: 0,
+            totalCustomerSpend: 0,
+            repeatBuyers: 0,
+            newLast30Days: 0,
+          },
+        },
+        { status: 500 }
+      );
+    }
+
+    const rawCustomers = Array.isArray(dbCustomers) ? dbCustomers : [];
+
+    // 2. Fetch live orders from Supabase to dynamically calculate exact orders count & total spent per customer
+    let ordersList: any[] = [];
+    try {
+      const { data: ordData, error: ordErr } = await supabaseAdmin
+        .from("orders")
+        .select("customer_email, total_amount, order_status");
+      if (!ordErr && Array.isArray(ordData)) {
+        ordersList = ordData;
       }
     } catch {
-      // fallback
+      ordersList = [];
     }
 
-    // Merge DB customers with known order buyers
-    const customerMap = new Map<string, any>();
+    // 3. Format customer objects with accurate dynamic orders count and spend
+    const customers = rawCustomers.map((c: any) => {
+      const emailLower = (c.email || "").trim().toLowerCase();
+      const customerOrders = ordersList.filter(
+        (o: any) =>
+          (o.customer_email || "").trim().toLowerCase() === emailLower &&
+          o.order_status !== "Cancelled"
+      );
 
-    // 1. Add order buyers first
-    for (const oc of ORDER_CUSTOMERS) {
-      customerMap.set(oc.email.toLowerCase(), { ...oc });
-    }
+      const computedOrdersCount = Math.max(
+        customerOrders.length,
+        Number(c.orders_count) || 0
+      );
 
-    // 2. Overlay live Supabase customers
-    for (const dbC of dbCustomers) {
-      const emailKey = (dbC.email || "").toLowerCase();
-      if (!emailKey) continue;
+      const computedTotalSpend = Math.max(
+        customerOrders.reduce(
+          (sum: number, o: any) => sum + (Number(o.total_amount) || 0),
+          0
+        ),
+        Number(c.total_spent) || 0
+      );
 
-      if (customerMap.has(emailKey)) {
-        const existing = customerMap.get(emailKey);
-        customerMap.set(emailKey, {
-          ...existing,
-          ...dbC,
-          orders_count: Math.max(Number(dbC.orders_count) || 0, existing.orders_count),
-          total_spent: Math.max(Number(dbC.total_spent) || 0, existing.total_spent),
-          role: dbC.role || existing.role || "CUSTOMER",
-        });
-      } else {
-        customerMap.set(emailKey, {
-          id: dbC.id,
-          name: dbC.name || "Customer",
-          email: dbC.email,
-          phone: dbC.phone || "—",
-          role: dbC.role || "CUSTOMER",
-          orders_count: Number(dbC.orders_count) || 0,
-          total_spent: Number(dbC.total_spent) || 0,
-          created_at: dbC.created_at || new Date().toISOString(),
-        });
-      }
-    }
+      const roleUpper = (c.role || "CUSTOMER").toUpperCase();
 
-    const customers = Array.from(customerMap.values());
+      return {
+        id: c.id,
+        name: c.name || "Customer",
+        email: c.email || "",
+        phone: c.phone || "—",
+        role: roleUpper,
+        orders_count: computedOrdersCount,
+        total_spent: computedTotalSpend,
+        created_at: c.created_at || new Date().toISOString(),
+      };
+    });
 
-    // Compute live stats for the KPI cards
+    // 4. Compute live stats for the KPI cards
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -139,16 +119,17 @@ export async function GET(req: Request) {
     console.error("Admin customers API exception:", err);
     return NextResponse.json(
       {
-        success: true,
-        customers: ORDER_CUSTOMERS,
+        success: false,
+        error: err.message || "Failed to load customers",
+        customers: [],
         stats: {
-          totalCustomers: ORDER_CUSTOMERS.length,
-          totalCustomerSpend: 4592,
-          repeatBuyers: 1,
-          newLast30Days: ORDER_CUSTOMERS.length,
+          totalCustomers: 0,
+          totalCustomerSpend: 0,
+          repeatBuyers: 0,
+          newLast30Days: 0,
         },
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }

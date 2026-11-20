@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+import { SparklesIcon } from "../components/StorefrontIcons";
 
 export const metadata: Metadata = {
   title: "About Us | MS Flowers & Cake — Fresh Blooms & Cakes in Kolkata",
@@ -344,8 +345,9 @@ export default function AboutUsPage() {
         <section className="max-w-[1680px] mx-auto px-4 sm:px-8 2xl:px-12 py-8 sm:py-12">
           <div className="rounded-3xl bg-zinc-950 text-white p-7 sm:p-10 lg:p-12 border border-zinc-800 shadow-lg flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="space-y-2 max-w-2xl">
-              <span className="inline-block text-[11px] font-black uppercase tracking-widest text-rose-400">
-                ✿ Celebrate Today
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-rose-400">
+                <SparklesIcon className="w-3.5 h-3.5 text-rose-400" />
+                <span>Celebrate Today</span>
               </span>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
                 Ready to Surprise Someone Special in Kolkata?

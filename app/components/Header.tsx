@@ -24,6 +24,15 @@ import {
   updateCartQuantity,
   useShopState,
 } from "../data/shopState";
+import {
+  ZapIcon,
+  MoonIcon,
+  FlowerIcon,
+  MapPinIcon,
+  ShoppingBagIcon,
+  CloseIcon,
+  SparklesIcon,
+} from "./StorefrontIcons";
 
 function getProductHref(product: Product) {
   if (!product.slug) {
@@ -434,12 +443,12 @@ export default function Header() {
               rel="noopener noreferrer"
               className="hidden xl:inline-flex bg-linear-to-r from-[#f43f5e] via-[#ef4444] to-[#f43f5e] text-white text-xs font-medium px-4 py-1.5 rounded-full shadow-xs items-center gap-1.5 hover:opacity-95 transition-opacity whitespace-nowrap"
             >
-              <span className="text-amber-200 text-[11px]" aria-hidden="true">
-                ✦
+              <span className="text-amber-200" aria-hidden="true">
+                <SparklesIcon className="w-3.5 h-3.5 text-amber-200 fill-amber-200" />
               </span>
               <span>Party Cakes &amp; Flowers</span>
-              <span className="text-amber-200 text-[11px]" aria-hidden="true">
-                ✦
+              <span className="text-amber-200" aria-hidden="true">
+                <SparklesIcon className="w-3.5 h-3.5 text-amber-200 fill-amber-200" />
               </span>
             </a>
 
@@ -714,7 +723,7 @@ export default function Header() {
                 aria-label="Close navigation menu"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer text-base shrink-0"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -728,8 +737,9 @@ export default function Header() {
                     onClick={closeMenu}
                     className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200/80 hover:border-[#c8102e] transition-all"
                   >
-                    <p className="text-[11px] font-bold text-[#c8102e] leading-tight">
-                      ⚡ 90-Min Express
+                    <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#c8102e] leading-tight">
+                      <ZapIcon className="w-3.5 h-3.5 text-[#c8102e]" />
+                      <span>90-Min Express</span>
                     </p>
                     <p className="text-[10px] text-zinc-600 mt-0.5 leading-tight">
                       Kolkata Hub
@@ -740,8 +750,9 @@ export default function Header() {
                     onClick={closeMenu}
                     className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80 hover:border-purple-600 transition-all"
                   >
-                    <p className="text-[11px] font-bold text-purple-800 leading-tight">
-                      🌙 12 AM Midnight
+                    <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-800 leading-tight">
+                      <MoonIcon className="w-3.5 h-3.5 text-purple-700" />
+                      <span>12 AM Midnight</span>
                     </p>
                     <p className="text-[10px] text-zinc-600 mt-0.5 leading-tight">
                       Surprise Slot
@@ -1086,8 +1097,9 @@ export default function Header() {
 
               {/* Local Trust Note */}
               <div className="py-2.5 px-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 text-center">
-                <p className="text-xs font-semibold text-zinc-700">
-                  🌸 Handcrafted Fresh Daily in Salt Lake • Guaranteed On-Time Dispatch
+                <p className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-zinc-700">
+                  <FlowerIcon className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span>Handcrafted Fresh Daily in Salt Lake • Guaranteed On-Time Dispatch</span>
                 </p>
               </div>
             </div>
@@ -1107,8 +1119,9 @@ export default function Header() {
                     : "items-center justify-between"
                 }`}
               >
-                <span className="font-semibold text-zinc-800">
-                  📍 Kolkata 90-Min Express Hub
+                <span className="inline-flex items-center gap-1.5 font-semibold text-zinc-800">
+                  <MapPinIcon className="w-3.5 h-3.5 text-[#c8102e] shrink-0" />
+                  <span>Kolkata 90-Min Express Hub</span>
                 </span>
                 <span className="text-zinc-500">Chingrighata, Salt Lake</span>
               </div>
@@ -1133,22 +1146,23 @@ export default function Header() {
       {/* Kolkata Delivery Pincode Modal */}
       {pincodeModalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto"
           onClick={() => setPincodeModalOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="pincode-modal-title"
-            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 overflow-hidden"
+            className="relative bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 bg-[#f3f0fa]/60">
-              <div>
-                <h2 id="pincode-modal-title" className="text-lg font-bold text-zinc-900">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 sm:py-4 border-b border-zinc-100 bg-[#f3f0fa]/80 shrink-0">
+              <div className="pr-2">
+                <h2 id="pincode-modal-title" className="text-base sm:text-lg font-bold text-zinc-900 leading-tight">
                   Where to deliver in Kolkata?
                 </h2>
-                <p className="text-xs text-zinc-600 mt-0.5">
+                <p className="text-[11px] sm:text-xs text-zinc-600 mt-0.5">
                   India — Kolkata &amp; Howrah Hyperlocal Delivery
                 </p>
               </div>
@@ -1156,26 +1170,27 @@ export default function Header() {
                 type="button"
                 onClick={() => setPincodeModalOpen(false)}
                 aria-label="Close pincode modal"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-white hover:text-zinc-900 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-white hover:text-zinc-900 transition-colors cursor-pointer shrink-0 border border-transparent hover:border-zinc-200 shadow-2xs"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            {/* Modal Scrollable Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto floral-scroll space-y-4 flex-1 overscroll-contain">
               <form onSubmit={handleCheckPincode} className="flex gap-2">
                 <input
                   type="text"
                   maxLength={6}
                   inputMode="numeric"
                   value={pincodeInput}
-                  onChange={(e) => setPincodeInput(e.target.value)}
+                  onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ""))}
                   placeholder="Enter Kolkata Pincode e.g. 700091"
-                  className="flex-1 rounded-xl border border-zinc-300 px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-[#c8102e] focus:outline-none"
+                  className="flex-1 min-w-0 rounded-xl border border-zinc-300 px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-[#c8102e] focus:ring-2 focus:ring-[#c8102e]/10 focus:outline-none transition-all"
                 />
                 <button
                   type="submit"
-                  className="bg-[#c8102e] hover:bg-[#a60c25] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
+                  className="bg-[#c8102e] hover:bg-[#a60c25] active:scale-95 text-white font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-xl transition-all cursor-pointer shrink-0 shadow-xs"
                 >
                   Check
                 </button>
@@ -1194,32 +1209,45 @@ export default function Header() {
               )}
 
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2.5">
+                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2.5">
                   Quick Select Popular Kolkata Areas
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {KOLKATA_AREAS.map((area) => (
-                    <button
-                      key={area.pincode}
-                      type="button"
-                      onClick={() => handleSelectArea(area)}
-                      className="flex items-center justify-between text-left px-3 py-2.5 rounded-xl border border-zinc-200 hover:border-[#c8102e] hover:bg-rose-50/40 transition-colors cursor-pointer"
-                    >
-                      <div>
-                        <span className="block text-xs sm:text-sm font-semibold text-zinc-800">
-                          {area.name}
-                        </span>
-                        <span className="block text-[11px] text-zinc-500">
-                          Pincode: {area.pincode}
-                        </span>
-                      </div>
-                      {area.tag && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 shrink-0">
-                          {area.tag}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+                  {KOLKATA_AREAS.map((area) => {
+                    const isSelected = selectedPincode === area.pincode;
+                    return (
+                      <button
+                        key={area.pincode}
+                        type="button"
+                        onClick={() => handleSelectArea(area)}
+                        className={`flex items-center justify-between text-left p-3 rounded-xl border transition-all cursor-pointer group ${
+                          isSelected
+                            ? "border-[#c8102e] bg-rose-50/70 shadow-2xs ring-1 ring-[#c8102e]/30"
+                            : "border-zinc-200 bg-zinc-50/40 hover:border-[#c8102e] hover:bg-rose-50/30"
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <span className={`block text-xs sm:text-sm font-semibold truncate ${
+                            isSelected ? "text-[#c8102e]" : "text-zinc-800 group-hover:text-[#c8102e]"
+                          }`}>
+                            {area.name}
+                          </span>
+                          <span className="block text-[11px] text-zinc-500 mt-0.5">
+                            Pincode: {area.pincode}
+                          </span>
+                        </div>
+                        {area.tag ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 shrink-0">
+                            {area.tag}
+                          </span>
+                        ) : isSelected ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
+                            Selected
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1253,14 +1281,14 @@ export default function Header() {
                 aria-label="Close cart drawer"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
             {cart.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-rose-50 text-[#c8102e] flex items-center justify-center text-2xl mb-4">
-                  🎂
+                <div className="w-16 h-16 rounded-full bg-rose-50 text-[#c8102e] flex items-center justify-center mb-4">
+                  <ShoppingBagIcon className="w-8 h-8 text-[#c8102e]" />
                 </div>
                 <h3 className="text-base font-bold text-zinc-900">Your Cart is Empty</h3>
                 <p className="text-sm text-zinc-500 mt-1.5 max-w-xs">
@@ -1329,7 +1357,7 @@ export default function Header() {
                               aria-label={`Remove ${item.product.name}`}
                               className="text-zinc-400 hover:text-[#c8102e] text-xs p-1 cursor-pointer shrink-0"
                             >
-                              ✕
+                              <CloseIcon className="w-3.5 h-3.5" />
                             </button>
                           </div>
 
@@ -1421,7 +1449,7 @@ export default function Header() {
                       onClick={() => setCartOpen(false)}
                       className="w-full inline-flex items-center justify-center gap-2 bg-[#c8102e] hover:bg-[#a60c25] text-white font-extrabold text-sm py-3 rounded-xl shadow-sm transition-colors"
                     >
-                      Proceed to Checkout →
+                      Proceed to Checkout
                     </Link>
                     <button
                       type="button"
@@ -1468,7 +1496,7 @@ export default function Header() {
                 aria-label="Close wishlist drawer"
                 className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -1539,7 +1567,7 @@ export default function Header() {
                               aria-label={`Remove ${item.name} from wishlist`}
                               className="text-zinc-400 hover:text-[#c8102e] text-xs p-1 cursor-pointer shrink-0"
                             >
-                              ✕
+                              <CloseIcon className="w-3.5 h-3.5" />
                             </button>
                           </div>
 
@@ -1586,7 +1614,7 @@ export default function Header() {
                     onClick={() => setWishlistOpen(false)}
                     className="w-full inline-flex items-center justify-center py-2 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-100 text-xs font-bold text-zinc-800 transition-colors"
                   >
-                    View Full Wishlist Page →
+                    View Full Wishlist Page
                   </Link>
                 </div>
               </>

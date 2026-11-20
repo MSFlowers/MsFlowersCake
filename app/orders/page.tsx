@@ -5,6 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import {
+  CakeIcon,
+  MailIcon,
+  FileTextIcon,
+  PhoneIcon,
+  MapPinIcon,
+  FlowerIcon,
+  CheckCircleIcon,
+} from "../components/StorefrontIcons";
 import { getStoredCustomer, getStoredToken } from "../lib/customerAuth";
 import { useShopState } from "../data/shopState";
 
@@ -356,7 +365,7 @@ export default function MyOrdersPage() {
                                       : "bg-zinc-300 text-zinc-700"
                                   }`}
                                 >
-                                  {isDone ? "✓" : s.step}
+                                  {isDone ? <CheckCircleIcon className="w-3.5 h-3.5 text-white" /> : s.step}
                                 </span>
                                 <span className="text-xs font-bold text-zinc-900">
                                   {s.label}
@@ -393,7 +402,7 @@ export default function MyOrdersPage() {
                                 />
                               ) : (
                                 <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center font-bold text-sm">
-                                  🌸
+                                  <FlowerIcon className="w-6 h-6 text-[#c8102e]" />
                                 </div>
                               )}
                               <div>
@@ -423,22 +432,31 @@ export default function MyOrdersPage() {
 
                       {/* Customization Messages if any */}
                       {(order.cake_message || order.card_message || order.delivery_note) && (
-                        <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 text-xs space-y-1.5">
+                        <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 text-xs space-y-2">
                           {order.cake_message && (
-                            <p>
-                              <b className="text-rose-900">🎂 Cake Message:</b>{" "}
+                            <p className="flex items-center gap-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 font-bold text-rose-900">
+                                <CakeIcon className="w-3.5 h-3.5 text-rose-700" />
+                                <span>Cake Message:</span>
+                              </span>
                               <span className="text-zinc-700">&quot;{order.cake_message}&quot;</span>
                             </p>
                           )}
                           {order.card_message && (
-                            <p>
-                              <b className="text-rose-900">💌 Greeting Card:</b>{" "}
+                            <p className="flex items-center gap-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 font-bold text-rose-900">
+                                <MailIcon className="w-3.5 h-3.5 text-rose-700" />
+                                <span>Greeting Card:</span>
+                              </span>
                               <span className="text-zinc-700">&quot;{order.card_message}&quot;</span>
                             </p>
                           )}
                           {order.delivery_note && (
-                            <p>
-                              <b className="text-rose-900">📝 Delivery Note:</b>{" "}
+                            <p className="flex items-center gap-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 font-bold text-rose-900">
+                                <FileTextIcon className="w-3.5 h-3.5 text-rose-700" />
+                                <span>Delivery Note:</span>
+                              </span>
                               <span className="text-zinc-700">{order.delivery_note}</span>
                             </p>
                           )}
@@ -456,14 +474,16 @@ export default function MyOrdersPage() {
                         <div className="text-xs font-bold text-zinc-900">
                           {order.recipient_name || order.customer_name}
                         </div>
-                        <div className="text-xs text-zinc-600 mt-0.5">
-                          📞 {order.recipient_phone || order.customer_phone}
+                        <div className="text-xs text-zinc-600 mt-1 inline-flex items-center gap-1.5">
+                          <PhoneIcon className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>{order.recipient_phone || order.customer_phone}</span>
                         </div>
                         <div className="text-xs text-zinc-600 mt-2 leading-relaxed">
                           {order.delivery_address}
                         </div>
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-100/70 text-rose-800">
-                          <span>📍 Kolkata Hub Pin:</span>
+                        <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-100/70 text-rose-800">
+                          <MapPinIcon className="w-3.5 h-3.5 text-[#c8102e]" />
+                          <span>Kolkata Hub Pin:</span>
                           <span className="font-mono">{order.pincode}</span>
                         </div>
                       </div>

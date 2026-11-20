@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Product } from "../data/types";
 import { useShopState } from "../data/shopState";
+import { CheckCircleIcon } from "./StorefrontIcons";
 
 interface ProductCardProps {
   product: Product;
@@ -119,13 +120,20 @@ export default function ProductCard({ product }: ProductCardProps) {
         <button
           type="button"
           onClick={handleAddToCart}
-          className={`w-full mt-2.5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer text-center ${
+          className={`w-full mt-2.5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer text-center inline-flex items-center justify-center gap-1.5 ${
             addedToCart
               ? "bg-emerald-600 text-white shadow-xs"
               : "bg-zinc-50 hover:bg-[#c8102e] text-zinc-800 hover:text-white border border-zinc-200/90 hover:border-[#c8102e] active:scale-[0.98]"
           }`}
         >
-          {addedToCart ? "✓ Added" : "Add to Cart"}
+          {addedToCart ? (
+            <>
+              <CheckCircleIcon className="w-3.5 h-3.5 text-white" />
+              <span>Added</span>
+            </>
+          ) : (
+            "Add to Cart"
+          )}
         </button>
       </div>
     </div>

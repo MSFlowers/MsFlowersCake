@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ProductVariant, ColorGallery } from "@/app/data/types";
+import { LeafIcon, MoonIcon, EyeIcon, ZapIcon, CheckIcon } from "@/app/components/StorefrontIcons";
 
 type Group = string;
 
@@ -148,7 +149,7 @@ export default function ProductsManager() {
   const [cats, setCats] = useState<Cat[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string; subMsg?: string } | null>(null);
 
   // filters
   const [groupFilter, setGroupFilter] = useState<"All" | Group>("All");
@@ -166,9 +167,54 @@ export default function ProductsManager() {
   const [newColorName, setNewColorName] = useState("");
   const [newColorCode, setNewColorCode] = useState("#e11d48");
 
-  const flash = (type: "ok" | "err", msg: string) => {
-    setToast({ type, msg });
-    setTimeout(() => setToast(null), 3500);
+  const flash = (type: "ok" | "err", msg: string, subMsg?: string) => {
+    setToast({ type, msg, subMsg });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const renderToast = () => {
+    if (!toast) return null;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed top-5 right-5 z-[99999] flex items-center gap-3.5 rounded-2xl bg-gray-950/95 backdrop-blur-md text-white px-5 py-3.5 shadow-2xl border border-gray-800 animate-in fade-in slide-in-from-top-3 duration-200"
+      >
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+            toast.type === "ok" ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+          }`}
+        >
+          {toast.type === "ok" ? (
+            <svg className="w-4 h-4 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+        </div>
+        <div>
+          <p className="text-sm font-extrabold tracking-tight text-white leading-tight">
+            {toast.msg}
+          </p>
+          {toast.subMsg && (
+            <p className="text-xs text-gray-300 mt-0.5 leading-snug">
+              {toast.subMsg}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setToast(null)}
+          className="ml-2 text-gray-400 hover:text-white transition-colors cursor-pointer text-base leading-none p-1"
+          aria-label="Close notification"
+        >
+          &times;
+        </button>
+      </div>
+    );
   };
 
   const load = useCallback(async () => {
@@ -403,8 +449,8 @@ export default function ProductsManager() {
     setSaving(true);
     try {
       if (form.id) {
-        const ok = await patchProduct(form.id, payload, "Product updated successfully");
-        if (ok) setForm(null);
+        setForm(null);
+        await patchProduct(form.id, payload, "Product Published");
       } else {
         const res = await fetch("/api/products", {
           method: "POST",
@@ -413,8 +459,8 @@ export default function ProductsManager() {
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(json.error || "Failed to create product");
-        flash("ok", "Product created successfully");
         setForm(null);
+        flash("ok", "Product Published", `"${payload.name}" is now live on the storefront!`);
         await load();
       }
     } catch (err: any) {
@@ -435,15 +481,7 @@ export default function ProductsManager() {
   if (form) {
     return (
       <div className="fixed inset-0 z-50 bg-[#FCF8F9] flex flex-col overflow-y-auto">
-        {toast && (
-          <div
-            className={`fixed top-4 right-4 z-[80] rounded-2xl px-5 py-3 text-sm font-semibold shadow-xl ${
-              toast.type === "ok" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-            }`}
-          >
-            {toast.msg}
-          </div>
-        )}
+        {renderToast()}
 
         {/* Top Header Sticky Bar */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-rose-100/80 px-6 sm:px-10 py-4 flex items-center justify-between gap-4 shadow-2xs">
@@ -651,34 +689,43 @@ export default function ProductsManager() {
 
                   {/* Feature Checkboxes with generous spacing */}
                   <div className="pt-6 border-t border-gray-100 flex flex-wrap gap-8">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-gray-800 cursor-pointer">
+                    <label className="flex items-center gap-2.5 text-sm font-semibold text-gray-800 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={form.isEggless}
                         onChange={(e) => set("isEggless", e.target.checked)}
                         className="rounded-lg text-rose-600 focus:ring-rose-500 w-5 h-5"
                       />
-                      🌿 100% Pure Veg (Eggless)
+                      <span className="inline-flex items-center gap-1.5">
+                        <LeafIcon className="w-4 h-4 text-emerald-600" />
+                        <span>100% Pure Veg (Eggless)</span>
+                      </span>
                     </label>
 
-                    <label className="flex items-center gap-3 text-sm font-semibold text-gray-800 cursor-pointer">
+                    <label className="flex items-center gap-2.5 text-sm font-semibold text-gray-800 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={form.isMidnight}
                         onChange={(e) => set("isMidnight", e.target.checked)}
                         className="rounded-lg text-rose-600 focus:ring-rose-500 w-5 h-5"
                       />
-                      🌙 12 AM Midnight Delivery Available
+                      <span className="inline-flex items-center gap-1.5">
+                        <MoonIcon className="w-4 h-4 text-indigo-600 fill-indigo-600" />
+                        <span>12 AM Midnight Delivery Available</span>
+                      </span>
                     </label>
 
-                    <label className="flex items-center gap-3 text-sm font-semibold text-gray-800 cursor-pointer">
+                    <label className="flex items-center gap-2.5 text-sm font-semibold text-gray-800 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={form.isActive}
                         onChange={(e) => set("isActive", e.target.checked)}
                         className="rounded-lg text-rose-600 focus:ring-rose-500 w-5 h-5"
                       />
-                      👁️ Active &amp; Published on Website
+                      <span className="inline-flex items-center gap-1.5">
+                        <EyeIcon className="w-4 h-4 text-rose-600" />
+                        <span>Active &amp; Published on Website</span>
+                      </span>
                     </label>
                   </div>
                 </div>
@@ -760,16 +807,31 @@ export default function ProductsManager() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Base Stock {form.hasVariants && "(Auto-summed)"}
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-gray-700">
+                            Base Stock {form.hasVariants && form.variants.length > 0 ? "(Auto-summed)" : "*"}
+                          </label>
+                          {form.hasVariants && form.variants.length > 0 && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                              Auto-Summed
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="number"
                           min={0}
-                          value={form.stock}
+                          value={
+                            form.hasVariants && form.variants.length > 0
+                              ? form.variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0)
+                              : form.stock
+                          }
                           disabled={form.hasVariants && form.variants.length > 0}
                           onChange={(e) => set("stock", e.target.value)}
-                          className={`${inputCls} disabled:bg-gray-100 disabled:text-gray-500`}
+                          className={`${inputCls} ${
+                            form.hasVariants && form.variants.length > 0
+                              ? "bg-emerald-50/50 text-emerald-900 font-bold border-emerald-200"
+                              : ""
+                          }`}
                         />
                       </div>
                       <div>
@@ -829,8 +891,9 @@ export default function ProductsManager() {
 
                       {/* Quick Presets Bar for 1-Click Addition */}
                       <div className="flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-rose-50/50 border border-rose-100/80 text-xs">
-                        <span className="font-bold text-gray-700 text-[11px] uppercase tracking-wide">
-                          ⚡ 1-Click Quick Presets:
+                        <span className="font-bold text-gray-700 text-[11px] uppercase tracking-wide inline-flex items-center gap-1.5">
+                          <ZapIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          <span>1-Click Quick Presets:</span>
                         </span>
                         {(form.group.toLowerCase().includes("cake")
                           ? [
@@ -877,7 +940,7 @@ export default function ProductsManager() {
                                   : "bg-white text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white shadow-2xs cursor-pointer"
                               }`}
                             >
-                              + {preset.name} {exists && "✓"}
+                              + {preset.name} {exists && <CheckIcon className="w-3 h-3 inline-block ml-1" />}
                             </button>
                           );
                         })}
@@ -1320,15 +1383,7 @@ export default function ProductsManager() {
   // ==========================================
   return (
     <div className="space-y-4">
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-[60] rounded-2xl px-5 py-3 text-sm font-semibold shadow-xl ${
-            toast.type === "ok" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
+      {renderToast()}
 
       <div className="rounded-3xl border border-rose-100 bg-white shadow-sm overflow-hidden">
         {/* Header */}
@@ -1518,13 +1573,19 @@ export default function ProductsManager() {
                     </td>
                     <td className="px-6 py-4 text-xs text-emerald-700 font-semibold">
                       {r.delivery_tag}
-                      {r.is_midnight && <span className="ml-1.5 text-indigo-600">🌙</span>}
+                      {r.is_midnight && (
+                        <MoonIcon className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600 inline-block ml-1.5 align-middle" />
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <button
                         type="button"
                         onClick={() =>
-                          patchProduct(r.id, { is_active: !r.is_active }, r.is_active ? "Product hidden" : "Product live")
+                          patchProduct(
+                            r.id,
+                            { is_active: !r.is_active },
+                            !r.is_active ? "Product Published" : "Product Hidden"
+                          )
                         }
                         className={`rounded-full px-3 py-1 text-[11px] font-bold border cursor-pointer ${
                           r.is_active

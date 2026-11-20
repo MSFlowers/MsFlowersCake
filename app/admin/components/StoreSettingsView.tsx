@@ -2,6 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { DEFAULT_STORE_SETTINGS } from "@/app/data/siteDefaults";
+import {
+  PhoneIcon,
+  MapPinIcon,
+  MailIcon,
+  ClockIcon,
+  MoonIcon,
+  LightbulbIcon,
+  SparklesIcon,
+} from "@/app/components/StorefrontIcons";
 
 export interface StoreSettingsData {
   id: string;
@@ -473,7 +482,7 @@ export function StoreSettingsView() {
                   type="text"
                   value={handcraftedText}
                   onChange={(e) => setHandcraftedText(e.target.value)}
-                  placeholder="Handcrafted with ❤️ in Chingrighata, Salt Lake, Kolkata"
+                  placeholder="Handcrafted in Chingrighata, Salt Lake, Kolkata"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 py-2 text-xs font-medium text-gray-900 focus:bg-white focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100 transition-all"
                 />
               </div>
@@ -486,7 +495,7 @@ export function StoreSettingsView() {
           <div className="rounded-2xl border border-rose-100 bg-linear-to-b from-rose-50/40 to-white p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-rose-100">
               <div className="flex items-center gap-2">
-                <span className="text-rose-500 text-sm">✦</span>
+                <SparklesIcon className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">
                   Live Customer Preview
                 </h3>
@@ -524,30 +533,30 @@ export function StoreSettingsView() {
                   f
                 </span>
                 <span className="w-7 h-7 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white text-[10px]">
-                  📞
+                  <PhoneIcon className="w-3.5 h-3.5 text-zinc-300" />
                 </span>
               </div>
 
               {/* Florist Hub Block */}
               <div className="pt-2 border-t border-zinc-800 space-y-2 text-[11px] text-zinc-300">
                 <p className="flex items-start gap-1.5 text-zinc-400">
-                  <span className="text-rose-400 shrink-0">📍</span>
+                  <MapPinIcon className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
                   <span className="text-zinc-300 line-clamp-2">{address}</span>
                 </p>
                 <p className="flex items-center gap-1.5">
-                  <span className="text-rose-400 shrink-0">📞</span>
+                  <PhoneIcon className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <span className="font-medium text-white">{supportPhone}</span>
                 </p>
                 <p className="flex items-center gap-1.5">
-                  <span className="text-rose-400 shrink-0">✉️</span>
+                  <MailIcon className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <span className="text-zinc-300 truncate">{supportEmail}</span>
                 </p>
                 <p className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-                  <span className="text-rose-400 shrink-0">🕒</span>
+                  <ClockIcon className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <span>{operatingHours}</span>
                 </p>
                 <p className="flex items-center gap-1.5 text-[10px] text-amber-300 font-medium">
-                  <span className="text-amber-400 shrink-0">🌙</span>
+                  <MoonIcon className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
                   <span>{midnightHours}</span>
                 </p>
               </div>
@@ -566,7 +575,7 @@ export function StoreSettingsView() {
               </p>
               <div className="space-y-2 text-xs">
                 <div className="flex items-center gap-2.5 p-2 rounded-xl bg-rose-50/60 border border-rose-100">
-                  <span className="text-sm">📞</span>
+                  <PhoneIcon className="w-4 h-4 text-rose-600 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-gray-500 uppercase">Call Store Desk</p>
                     <p className="font-bold text-gray-900 text-xs truncate">{supportPhone}</p>
@@ -574,7 +583,9 @@ export function StoreSettingsView() {
                 </div>
 
                 <div className="flex items-center gap-2.5 p-2 rounded-xl bg-emerald-50/60 border border-emerald-100">
-                  <span className="text-sm">💬</span>
+                  <svg className="w-4 h-4 text-emerald-600 fill-current shrink-0" viewBox="0 0 24 24">
+                    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z" />
+                  </svg>
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-emerald-700 uppercase">WhatsApp Helpdesk</p>
                     <p className="font-bold text-emerald-900 text-xs truncate">{whatsappNumber}</p>
@@ -582,7 +593,7 @@ export function StoreSettingsView() {
                 </div>
 
                 <div className="flex items-center gap-2.5 p-2 rounded-xl bg-gray-50 border border-gray-100">
-                  <span className="text-sm">✉️</span>
+                  <MailIcon className="w-4 h-4 text-gray-500 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-gray-500 uppercase">Email Support</p>
                     <p className="font-bold text-gray-900 text-xs truncate">{supportEmail}</p>
@@ -594,7 +605,7 @@ export function StoreSettingsView() {
             {/* Quick Tips */}
             <div className="rounded-2xl bg-amber-50/60 border border-amber-200/80 p-3.5 text-xs text-amber-900 space-y-1">
               <p className="font-bold flex items-center gap-1.5 text-amber-950">
-                <span>💡</span>
+                <LightbulbIcon className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>Pro Tip</span>
               </p>
               <p className="text-[11px] text-amber-800 leading-relaxed">

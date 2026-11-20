@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { SparklesIcon } from "@/app/components/StorefrontIcons";
 
 export interface DeliverySettingsData {
   id: string;
@@ -390,7 +391,7 @@ export function DeliverySettingsView() {
                 <span className="font-bold text-emerald-700">&#8377;0 (FREE)</span>
               </div>
               <div className="pt-2 border-t border-emerald-200/70 text-[11px] font-mono text-emerald-900">
-                Cart alert: <span className="text-emerald-700 font-bold">&ldquo;🎉 Yay! You unlocked FREE Fast Delivery!&rdquo;</span>
+                Cart alert: <span className="text-emerald-700 font-bold inline-flex items-center gap-1"><SparklesIcon className="w-3.5 h-3.5 text-emerald-600" /> &ldquo;Yay! You unlocked FREE Fast Delivery!&rdquo;</span>
               </div>
             </div>
 

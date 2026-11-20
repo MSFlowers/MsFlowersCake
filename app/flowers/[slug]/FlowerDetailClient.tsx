@@ -8,6 +8,7 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/ProductCard";
 import ProductReviewsSection from "../../components/ProductReviewsSection";
+import { CheckCircleIcon } from "../../components/StorefrontIcons";
 import { Product } from "../../data/types";
 import { useProductReviews } from "../../data/reviewsState";
 import { CartAddon, useShopState } from "../../data/shopState";
@@ -64,7 +65,7 @@ export default function FlowerDetailClient({ product, related = [] }: FlowerDeta
   const router = useRouter();
   const { addToCart, isProductWishlisted, toggleWishlist } = useShopState();
   const isWishlisted = isProductWishlisted(product.id);
-  const { totalCount } = useProductReviews(product);
+  const { totalCount, avgRating } = useProductReviews(product);
 
   // Addon prices
   const ADDONS = [
@@ -384,13 +385,13 @@ export default function FlowerDetailClient({ product, related = [] }: FlowerDeta
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-950 border border-amber-200/80 text-xs font-extrabold px-2.5 py-0.5 rounded-lg shadow-2xs">
-                  <svg className="w-3.5 h-3.5 fill-amber-500 text-amber-500" viewBox="0 0 20 20">
+                  <svg className={`w-3.5 h-3.5 ${totalCount > 0 ? "fill-amber-500 text-amber-500" : "fill-zinc-300 text-zinc-300"}`} viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
-                  {product.rating}
+                  {totalCount > 0 ? avgRating.toFixed(1) : "New"}
                 </span>
                 <span className="text-xs text-zinc-700 font-bold">
-                  ({totalCount} verified reviews)
+                  {totalCount > 0 ? `(${totalCount} verified reviews)` : "(No reviews yet)"}
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight leading-snug">
@@ -903,7 +904,7 @@ export default function FlowerDetailClient({ product, related = [] }: FlowerDeta
                   {product.deliveryInfo?.map((info, idx) => (
                     <div key={idx} className="p-3.5 sm:p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/70 space-y-1.5">
                       <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-                        ✓
+                        <CheckCircleIcon className="w-4 h-4 text-white" />
                       </div>
                       <p className="text-xs font-bold text-emerald-950 leading-relaxed">
                         {info}
@@ -948,7 +949,7 @@ export default function FlowerDetailClient({ product, related = [] }: FlowerDeta
               href="/flowers"
               className="text-xs sm:text-sm font-extrabold text-[#c8102e] hover:underline whitespace-nowrap shrink-0"
             >
-              View All Flowers →
+              View All Flowers
             </Link>
           </div>
 

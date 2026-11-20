@@ -2,6 +2,15 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
+import {
+  ClockIcon,
+  CheckIcon,
+  StarIcon,
+  CameraIcon,
+  FlowerIcon,
+  EyeIcon,
+  CloseIcon,
+} from "@/app/components/StorefrontIcons";
 
 export interface DbReview {
   id: string;
@@ -19,81 +28,10 @@ export interface DbReview {
   created_at: string;
 }
 
-const DEFAULT_REVIEWS: DbReview[] = [
-  {
-    id: "r1",
-    product_id: "fl-01",
-    product_name: "Velvet Crimson 12 Red Roses Bouquet",
-    product_image: "/flowers/red-roses-12.jpg",
-    customer_name: "Sushain Demo",
-    customer_email: "sushaindemo@gmail.com",
-    rating: 5,
-    title: "Fresh and Fragrant Blooms",
-    comment: "The Dutch roses arrived fresh and blooming on time for our anniversary in Salt Lake. Amazing packaging!",
-    is_verified_buyer: true,
-    status: "approved",
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    id: "r2",
-    product_id: "ck-01",
-    product_name: "Signature Belgian Chocolate Truffle Cake",
-    product_image: "/cakes/truffle.jpg",
-    customer_name: "Priya Roy",
-    customer_email: "priya.roy@gmail.com",
-    rating: 5,
-    title: "Super Moist & Rich Chocolate",
-    comment: "Ordered for midnight delivery at Chingrighata. Reached right at 12:00 AM! Taste was divine.",
-    is_verified_buyer: true,
-    status: "approved",
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: "r3",
-    product_id: "fl-02",
-    product_name: "Imperial Pink Lilies & Carnations Bunch",
-    product_image: "/flowers/pink-lilies.jpg",
-    customer_name: "Ananya Banerjee",
-    customer_email: "ananya.banerjee@gmail.com",
-    rating: 5,
-    title: "Elegant presentation",
-    comment: "Beautiful flowers with wonderful scent. Delivered within 60 mins express slot.",
-    is_verified_buyer: true,
-    status: "approved",
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-  },
-  {
-    id: "r4",
-    product_id: "cb-01",
-    product_name: "Classic Romance Rose Bouquet & Truffle Cake",
-    product_image: "/combos/romance.jpg",
-    customer_name: "Rahul Mukherjee",
-    customer_email: "rahul.m@gmail.com",
-    rating: 4,
-    title: "Great value combo",
-    comment: "The combination of fresh red roses and dark truffle cake was perfect for my sister birthday.",
-    is_verified_buyer: true,
-    status: "approved",
-    created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
-  },
-  {
-    id: "r5",
-    product_id: "fl-01",
-    product_name: "Velvet Crimson 12 Red Roses Bouquet",
-    product_image: "/flowers/red-roses-12.jpg",
-    customer_name: "Dev Sharma",
-    customer_email: "dev.sharma@gmail.com",
-    rating: 5,
-    title: "Pending Review Example",
-    comment: "I recently ordered this bouquet and was impressed with the freshness and wrapping.",
-    is_verified_buyer: true,
-    status: "pending",
-    created_at: new Date(Date.now() - 600000).toISOString(),
-  },
-];
+const DEFAULT_REVIEWS: DbReview[] = [];
 
 export function ReviewsModerationView() {
-  const [reviews, setReviews] = useState<DbReview[]>(DEFAULT_REVIEWS);
+  const [reviews, setReviews] = useState<DbReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -341,24 +279,25 @@ export function ReviewsModerationView() {
         {/* Filter Pills matching Image 2 */}
         <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
           {[
-            { id: "all" as const, label: `All Reviews (${totalCount})` },
-            { id: "pending" as const, label: `⏳ Pending (${pendingCount})` },
-            { id: "approved" as const, label: `✓ Approved (${approvedCount})` },
-            { id: "5star" as const, label: "5 ★ Stars" },
-            { id: "4star" as const, label: "4 ★ Stars" },
-            { id: "withPhotos" as const, label: "📷 With Photos" },
+            { id: "all" as const, label: `All Reviews (${totalCount})`, icon: null },
+            { id: "pending" as const, label: `Pending (${pendingCount})`, icon: <ClockIcon className="w-3.5 h-3.5 text-amber-600" /> },
+            { id: "approved" as const, label: `Approved (${approvedCount})`, icon: <CheckIcon className="w-3.5 h-3.5 text-emerald-600" /> },
+            { id: "5star" as const, label: "5 Stars", icon: <StarIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> },
+            { id: "4star" as const, label: "4 Stars", icon: <StarIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> },
+            { id: "withPhotos" as const, label: "With Photos", icon: <CameraIcon className="w-3.5 h-3.5 text-blue-600" /> },
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-rose-600 text-white shadow-xs"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {tab.label}
+              {tab.icon}
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -406,7 +345,7 @@ export function ReviewsModerationView() {
                             />
                           ) : (
                             <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 font-bold flex items-center justify-center shrink-0 border border-rose-100">
-                              🌸
+                              <FlowerIcon className="w-5 h-5 text-[#c8102e]" />
                             </div>
                           )}
                           <div className="min-w-0">
@@ -426,18 +365,20 @@ export function ReviewsModerationView() {
                         <div className="text-[11px] text-gray-500">{r.customer_email}</div>
                         {r.is_verified_buyer && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded mt-0.5">
-                            ✓ Verified Buyer
+                            <CheckIcon className="w-3 h-3 text-emerald-600" />
+                            <span>Verified Buyer</span>
                           </span>
                         )}
                       </td>
 
                       {/* Rating */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1 text-amber-500">
+                        <div className="flex items-center gap-0.5 text-amber-500">
                           {[...Array(5)].map((_, i) => (
-                            <span key={i} className={i < r.rating ? "text-amber-400" : "text-gray-200"}>
-                              ★
-                            </span>
+                            <StarIcon
+                              key={i}
+                              className={`w-3.5 h-3.5 ${i < r.rating ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
+                            />
                           ))}
                         </div>
                         <span className="text-[11px] font-bold text-gray-700">
@@ -448,8 +389,9 @@ export function ReviewsModerationView() {
                       {/* Photo */}
                       <td className="py-3.5 px-4">
                         {r.photo_url ? (
-                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200">
-                            📷 Photo
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200">
+                            <CameraIcon className="w-3 h-3 text-blue-600" />
+                            <span>Photo</span>
                           </span>
                         ) : (
                           <span className="text-gray-300 font-bold">—</span>
@@ -467,7 +409,22 @@ export function ReviewsModerationView() {
                               : "bg-red-50 text-red-700 border border-red-200"
                           }`}
                         >
-                          {isApproved ? "✓ Approved" : isPending ? "⏳ Pending" : "✗ Rejected"}
+                          {isApproved ? (
+                            <>
+                              <CheckIcon className="w-3 h-3 text-emerald-600" />
+                              <span>Approved</span>
+                            </>
+                          ) : isPending ? (
+                            <>
+                              <ClockIcon className="w-3 h-3 text-amber-700" />
+                              <span>Pending</span>
+                            </>
+                          ) : (
+                            <>
+                              <CloseIcon className="w-3 h-3 text-red-600" />
+                              <span>Rejected</span>
+                            </>
+                          )}
                         </span>
                       </td>
 
@@ -514,9 +471,10 @@ export function ReviewsModerationView() {
                           <button
                             type="button"
                             onClick={() => setSelectedReview(r)}
-                            className="px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-bold transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-[11px] font-bold transition-colors cursor-pointer"
                           >
-                            👁 View
+                            <EyeIcon className="w-3 h-3 text-gray-500" />
+                            <span>View</span>
                           </button>
 
                           {/* Delete */}
@@ -557,9 +515,10 @@ export function ReviewsModerationView() {
               <button
                 type="button"
                 onClick={() => setSelectedReview(null)}
-                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg text-lg leading-none"
+                aria-label="Close modal"
+                className="text-gray-400 hover:text-gray-700 p-1 rounded-lg text-sm cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -571,10 +530,11 @@ export function ReviewsModerationView() {
                   <div className="text-gray-500 text-[11px]">{selectedReview.customer_email}</div>
                 </div>
                 <div className="text-right">
-                  <div className="flex items-center gap-1 text-amber-500 font-bold">
-                    ★ {selectedReview.rating}.0 / 5.0
+                  <div className="inline-flex items-center gap-1 text-amber-500 font-bold">
+                    <StarIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                    <span>{selectedReview.rating}.0 / 5.0</span>
                   </div>
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-gray-400 block">
                     {new Date(selectedReview.created_at).toLocaleDateString("en-IN", {
                       day: "numeric",
                       month: "short",
@@ -588,13 +548,23 @@ export function ReviewsModerationView() {
               <div className="flex items-center gap-2">
                 <span className="text-gray-500 font-semibold">Moderation Status:</span>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
                     selectedReview.status === "approved"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                       : "bg-amber-50 text-amber-700 border border-amber-200"
                   }`}
                 >
-                  {selectedReview.status === "approved" ? "✓ Approved (Live on Store)" : "⏳ Pending Approval"}
+                  {selectedReview.status === "approved" ? (
+                    <>
+                      <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Approved (Live on Store)</span>
+                    </>
+                  ) : (
+                    <>
+                      <ClockIcon className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Pending Approval</span>
+                    </>
+                  )}
                 </span>
               </div>
 

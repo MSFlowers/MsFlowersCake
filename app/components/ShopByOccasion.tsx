@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { SparklesIcon } from "./StorefrontIcons";
 
 interface OccasionItem {
   id: string;
@@ -64,8 +65,9 @@ export default function ShopByOccasion() {
         <div className="relative z-10 w-full flex flex-col items-center">
           {/* Subtle Heading */}
           <div className="mb-3.5 sm:mb-4.5 text-center">
-            <span className="inline-block px-3 py-1 rounded-full bg-white/90 backdrop-blur-xs text-[10px] sm:text-[11px] font-black tracking-widest uppercase text-[#c8102e] shadow-2xs">
-              ✨ Curated For Every Moment
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 backdrop-blur-xs text-[10px] sm:text-[11px] font-black tracking-widest uppercase text-[#c8102e] shadow-2xs">
+              <SparklesIcon className="w-3.5 h-3.5 text-[#c8102e]" />
+              <span>Curated For Every Moment</span>
             </span>
             <h2 className="text-xl sm:text-2xl 2xl:text-3xl font-black text-zinc-900 tracking-tight drop-shadow-xs mt-1">
               Celebrate Every Occasion
